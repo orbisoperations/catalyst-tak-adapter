@@ -11,6 +11,8 @@ export interface Config{
         catalyst_endpoint: string;
         catalyst_token: string
         catalyst_query: string
+        catalyst_query_variables: Record<string, any>
+        local_storage_dir: string
     },
     producer?: {
         catalyst_jwks_endpoint: string;

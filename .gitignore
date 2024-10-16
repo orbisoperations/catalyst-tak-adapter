@@ -176,3 +176,4 @@ dist
 
 key.pem
 cert.pem
+config.toml

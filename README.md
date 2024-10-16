@@ -56,5 +56,9 @@ The consumer takes data from Catalyst and supplies it to the TAK Server.
 
 ## Producer
 
-The producter takes data from the TAK Server and supplies it to Catalyst.
+The producer takes data from the TAK Server and supplies it to Catalyst.
+
+### Local Storage
+
+
 

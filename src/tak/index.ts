@@ -10,29 +10,43 @@ export function readKeyAndCert(config: Config) {
     };
 }
 
-export async function startTakClient(config: Config, handlers: {
-    onCot?: (tak: TAK, cot: CoT) => Promise<void>,
-    onEnd?: (tak: TAK) => Promise<void>,
-    onTimeout?: (tak: TAK) => Promise<void>,
-    onPing?: (tak: TAK) => Promise<void>,
-    onError?: (tak: TAK, err: Error) => Promise<void>
-}) {
-    const tak = await TAK.connect('ConnectionID', new URL(config.tak.endpoint), readKeyAndCert(config));
-    tak.on('cot', async (cot: CoT) => {
-        console.error('COT', cot); // See node-cot library
-        if (handlers.onCot) await handlers.onCot(tak, cot);
-    }).on('end', async () => {
-        console.error(`Connection End`);
-        if (handlers.onEnd) await handlers.onEnd(tak);
-    }).on('timeout', async () => {
-        console.error(`Connection Timeout`);
-        if (handlers.onTimeout) await handlers.onTimeout(tak);
-    }).on('ping', async () => {
-        console.error(`TAK Server Ping`);
-        if (handlers.onPing) await handlers.onPing(tak)
-    }).on('error', async (err) => {
-        console.error(`Connection Error`);
-        if (handlers.onError) await handlers.onError(tak, err);
-    });
+export class TakClient {
+    tak?: TAK;
+    config: Config;
+    timers: Map<string, Timer>
+    constructor(config: Config) {
+        this.config = config;
+        this.timers = new Map<string, Timer>();
+    }
+
+    async init() {
+        this.tak = await TAK.connect('ConnectionID', new URL(this.config.tak.endpoint), readKeyAndCert(this.config));
+    }
+
+    async start() {
+        if (!this.tak) {
+            throw new Error('TAK not initialized or connection - please see logs above');
+        }
+        this.tak.on('cot', async (cot: CoT) => {
+            console.error('COT', cot); //
+        }).on('end', async () => {
+            console.error(`Connection End`);
+        }).on('timeout', async () => {
+            console.error(`Connection Timeout`);
+        }).on('ping', async () => {
+            console.error(`TAK Server Ping`);
+        }).on('error', async (err) => {
+            console.error(`Connection Error`);
+        });
+    }
+
+    setInterval(name: string, func: (tak: TAK) => () => Promise<void>, ms: number) {
+        this.timers.set(name, setInterval(func(this.tak!), ms));
+    }
+
+    cancelInterval(name: string) {
+        this.timers.get(name)?.unref();
+    }
+
 }
 
