@@ -64,13 +64,19 @@ const config = getConfig();
 
 const consumer = new Consumer(config);
 
-const jsonQueryResults = await consumer.doGraphqlQuery()
-const cots = consumer.jsonToCots(jsonQueryResults)
 const takClient = new TakClient(config)
 await takClient.init()
 takClient.start()
 
+takClient.setInterval('consumer', (tak: TAK) => {
+        return async () => {
+            const jsonResults = await consumer.doGraphqlQuery()
+            const cots = consumer.jsonToCots(jsonResults)
+            consumer.publishCot(cots, tak)
+        }
+    }
+, config.consumer?.catalyst_query_poll_interval_ms || 1000)
+
 //consumer.publishCot(cots, takClient.tak!)
 takClient.tak?.write(extracot)
-takClient.tak?.write(cots)
 
