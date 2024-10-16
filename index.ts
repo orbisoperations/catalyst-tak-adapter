@@ -66,9 +66,6 @@ const consumer = new Consumer(config);
 
 const jsonQueryResults = await consumer.doGraphqlQuery()
 const cots = consumer.jsonToCots(jsonQueryResults)
-
-cots.map(cot => console.log(cot.to_xml()))
-
 const takClient = new TakClient(config)
 await takClient.init()
 takClient.start()
