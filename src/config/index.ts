@@ -1,5 +1,24 @@
 import fs from "fs"
 import toml from "toml"
+
+export interface CoTTransform {
+    uid?: string
+    type: string
+    lat: string
+    lon: string
+    hae?: string
+    callsign?: string
+}
+
+export interface CoTOverwrite {
+    uid?: string
+    type?: string
+    lat?: string
+    lon?: string
+    hae?: string
+    callsign?: string
+}
+
 export interface Config{
     tak: {
         connection_id: string;
@@ -14,14 +33,10 @@ export interface Config{
         catalyst_query_variables: Record<string, any>
         catalyst_query_poll_interval_ms: number
         local_storage_dir: string
-        transforms: {
+        parser: {
             [key: string]: {
-                uid?: string
-                type: string
-                lat: string
-                lon: string
-                hae?: string
-                callsign?: string
+                transform: CoTTransform
+                overwrite?: CoTOverwrite
             }
         }
     },

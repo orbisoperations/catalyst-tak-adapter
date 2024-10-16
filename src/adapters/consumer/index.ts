@@ -6,8 +6,19 @@
     [] we need to send the messages to the TAK server
  */
 
-import {Config} from "../../config";
+import {Config, CoTOverwrite, CoTTransform} from "../../config";
 import TAK, {CoT} from "@tak-ps/node-tak";
+
+interface CoTValues {
+    uid?: string
+    type?: string
+    lat?: string
+    lon?: string
+    hae?: string
+    callsign?: string
+}
+
+
 
 export class Consumer {
     config: Config
@@ -54,48 +65,33 @@ export class Consumer {
     jsonToCots(json: any) {
         const data = json.data
         // specific airplane
-        const transforms = this.config.consumer?.transforms
-        if (transforms === undefined) {
+        const parsers = this.config.consumer?.parser
+        if (parsers === undefined) {
             console.warn("no transforms have been found and unable to convert data to CoT")
             return []
         }
 
         let cots: CoT[] = []
-        for (const [key, transform] of Object.entries(transforms)) {
-            if (data[key] === undefined) {
-                console.warn("key not found in data", key)
+        for (const [dataName, parser] of Object.entries(parsers)) {
+            if (data[dataName] === undefined) {
+                console.warn("key not found in data", dataName)
             } else {
-                const dataToTransform = data[key] as any[]
+                const dataToTransform = data[dataName] as any[]
                 for (const dateElement of dataToTransform) {
                     console.error(dateElement)
-                    let uid, type, lat, lon, hae, callsign
-                    if (transform.uid && dateElement[transform.uid]) uid = dateElement[transform.uid]
-                    else uid = crypto.randomUUID()
-                    if (transform.type && dateElement[transform.type]) type = dateElement[transform.type]
-                    else type = "a-f-G"
-                    if (transform.lat && dateElement[transform.lat]) lat = dateElement[transform.lat]
-                    else {
-                        console.error(`lat value not found for ${key}:${uid}`);
+                    let extractedVals = this.extractCoTValues(dataName, dateElement, parser.transform)
+                    if (extractedVals === undefined) {
+                        console.error("error extracting values for", dataName)
                         continue
                     }
-                    if (transform.lon && dateElement[transform.lon]) lon = dateElement[transform.lon]
-                    else {
-                        console.error(`lon value not found for ${key}:${uid}`);
-                        continue
-                    }
-                    if (transform.hae && dateElement[transform.hae]) hae = dateElement[transform.hae]
-                    else hae = "999999.0"
-                    if (transform.callsign && dateElement[transform.callsign]) callsign = dateElement[transform.callsign]
-                    else  callsign = ""
-
-                    console.log(`uid: ${uid}, type: ${type}, lat: ${lat}, lon: ${lon}, hae: ${hae}, callsign: ${callsign}`)
-                    throw new Error("not implemented")
+                    if (parser.overwrite) extractedVals = this.overWriteCoTValues(extractedVals, parser.overwrite!)
+                    const cotValues = this.fillDefaultCoTValues(extractedVals)
                     cots.push(new CoT({
                         event: {
                             _attributes: {
                                 version: "2.0",
-                                uid: uid,
-                                type: type,
+                                uid: cotValues.uid,
+                                type: cotValues.type,
                                 how: "h-g-i-g-o",
                                 time: new Date().toISOString(),
                                 start: new Date().toISOString(),
@@ -104,9 +100,9 @@ export class Consumer {
                             detail: {},
                             point: {
                                 _attributes: {
-                                    lat: lat,
-                                    lon: lon,
-                                    hae: hae,
+                                    lat: cotValues.lat,
+                                    lon: cotValues.lon,
+                                    hae: cotValues.hae,
                                     ce: "999999.0",
                                     le: "999999.0"
                                 }
@@ -118,6 +114,54 @@ export class Consumer {
         }
 
         return cots
+    }
+
+    extractCoTValues(key: string, object: any, transform: CoTTransform): CoTValues | undefined {
+        let uid, type, lat, lon, hae, callsign: string | undefined
+        if (transform.uid && object[transform.uid]) uid = object[transform.uid]
+        if (transform.type && object[transform.type]) type = object[transform.type]
+        if (transform.lat && object[transform.lat]) lat = object[transform.lat]
+        else {
+            console.error(`lat value not found for ${key}:${uid}`);
+            return undefined
+        }
+        if (transform.lon && object[transform.lon]) lon = object[transform.lon]
+        else {
+            console.error(`lon value not found for ${key}:${uid}`);
+            return undefined
+        }
+        if (transform.hae && object[transform.hae]) hae = object[transform.hae]
+        if (transform.callsign && object[transform.callsign]) callsign = object[transform.callsign]
+
+        return {
+            uid: uid,
+            type: type,
+            lat: lat,
+            lon: lon,
+            hae: hae,
+            callsign: callsign
+        }
+    }
+
+    overWriteCoTValues(CoTVals: CoTValues, transform: CoTOverwrite) {
+        if (transform.uid) CoTVals.uid = transform.uid
+        if (transform.type) CoTVals.type = transform.type
+        if (transform.lat) CoTVals.lat = transform.lat
+        if (transform.lon) CoTVals.lon = transform.lon
+        if (transform.hae) CoTVals.hae = transform.hae
+        if (transform.callsign) CoTVals.callsign = transform.callsign
+        if (transform.type) CoTVals.type = transform.type
+
+        return CoTVals
+    }
+
+    fillDefaultCoTValues(cotValues: CoTValues): CoTValues {
+        if (!cotValues.uid) cotValues.uid = crypto.randomUUID()
+        if (!cotValues.type) cotValues.type = "a-f-G"
+        if (!cotValues.hae) cotValues.hae = "999999.0"
+        if (!cotValues.callsign) cotValues.callsign = ""
+
+        return cotValues
     }
 
     publishCot(cots: CoT[], tak: TAK) {
