@@ -12,7 +12,18 @@ export interface Config{
         catalyst_token: string
         catalyst_query: string
         catalyst_query_variables: Record<string, any>
+        catalyst_query_poll_interval_ms: number
         local_storage_dir: string
+        transforms: {
+            [key: string]: {
+                uid?: string
+                type: string
+                lat: string
+                lon: string
+                hae?: string
+                callsign?: string
+            }
+        }
     },
     producer?: {
         catalyst_jwks_endpoint: string;
