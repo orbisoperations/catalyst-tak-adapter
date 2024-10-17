@@ -24,9 +24,6 @@ TODO:
 
 const config = getConfig();
 
-const shouldUseConsumer = config.consumer !== undefined
-const shouldUseProducer = config.producer !== undefined
-
 let consumer: Consumer | undefined = undefined
 let producer: Producer | undefined = undefined
 if (config.consumer) {
@@ -60,4 +57,13 @@ if (consumer) {
         , config.consumer?.catalyst_query_poll_interval_ms || 1000)
 }
 
+// const producer = new Producer(config);
+// // producer.handleStaleCoT();
+// await producer.putCoT(extracot[0]);
+// await producer.putCoT(extracot[1])
+// producer.getAllCoT();
+// await producer.deleteCoT('06ffdc74-fa10-6e37-6280-057491ac7e49')
+// await producer.getCoT('06ffdc74-fa10-6e37-6280-057491ac7e49')
+// await producer.getCoT('06ffdc74-fa10-6e37-6280-057491ac7e40')
+// takClient.tak?.write(cots)
 
