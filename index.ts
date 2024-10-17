@@ -1,6 +1,6 @@
 import TAK, {CoT}  from '@tak-ps/node-tak';
 import {TakClient} from "./src/tak"
-import {getConfig} from "./src/config"
+import {getConfig, Config} from "./src/config"
 import {Consumer} from "./src/adapters/consumer"
 import { Producer } from './src/adapters/producer';
 
@@ -23,7 +23,16 @@ TODO:
     [X] we need to send the messages to the TAK server
  */
 
-const config = getConfig();
+let config: Config | undefined = undefined
+while (config === undefined) {
+    try {
+        config = getConfig();
+    } catch (e) {
+        console.error("Error reading config file", e)
+        await new Promise(resolve => setTimeout(resolve, 10 * 1000))
+    }
+}
+
 
 let consumer: Consumer | undefined = undefined
 let producer: Producer | undefined = undefined

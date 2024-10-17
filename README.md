@@ -8,7 +8,9 @@ The Catalyst Tak Adapter is a service design to bridge TAK environments to a ric
   - [Minimal TOML Configuration File](#minimal-toml-configuration-file)
   - [TAK Key and Certs](#tak-key-and-certs)
   - [Adapter Storage](#adapter-storage)
-  - [Running the Container](#running-the-container)
+  - [Deployments](#deployments)
+    - [Running the Container](#running-the-container)
+    - [Running in Fly.io](#running-in-flyio)
 - [Development Steps](#development-steps)
     - [Check out Repo and Bootrstrap TAK Dev Server](#check-out-repo-and-bootrstrap-tak-dev-server)
     - [Setting Up Your Browser](#setting-up-your-browser)
@@ -95,7 +97,9 @@ Although the adapter is designed to keep data ephemeral (staleness is set by the
 
 The directory `/usr/src/app/db` can be mounted to a volume to persist data between container restarts.
 
-### Running the Container
+### Deployments 
+
+#### Running the Container
 
 The following command will run the container with the necessary mounts and environment variables.
 
@@ -106,6 +110,21 @@ docker run tak-adapter \
   -v /path/to/cert.pem:/usr/src/app/cert.pem \
   -v /path/to/db:/usr/src/app/db
 ```
+
+#### Running in Fly.io
+
+
+Generating time limited SSH keys:
+```bash
+[ -f ~/.ssh/flytmp ] && rm -f ~/.ssh/{flytmp,flytmp-cert.pub} & 
+fly ssh issue personal ~/.ssh/flytmp --hours 1 -o $YOUR_ORG_HERE
+```
+
+Opening a tunnel to the fly.io instance:
+```bash
+fly proxy 10022:22 -a $YOUR_APP_NAME $APP_IP_ADDR 
+```
+
 
 
 ## Development Steps
