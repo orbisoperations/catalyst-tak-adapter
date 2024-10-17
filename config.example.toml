@@ -34,3 +34,5 @@ type = "a-f-A"
 catalyst_jwks_url="https://gateway.catalyst.devintelops.io/.well-known/jwks.json"
 catalyst_app_id = "thebestappid"
 local_db_path="yourdb"
+graphql_port = 8080
+graphql_host = "0.0.0.0"
