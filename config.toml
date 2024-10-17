@@ -20,12 +20,14 @@ query {
 """
 catalyst_query_poll_interval_ms = 10000
 
-[consumer.transforms.aircraftWithinDistance]
+[consumer.parser.aircraftWithinDistance.transform]
 uid = "hex"
-type = "a-f-A"
 lat = "lat"
 lon = "lon"
 hae = "alt_geom"
+
+[consumer.parser.aircraftWithinDistance.overwrite]
+type = "a-f-A"
 
 [producer]
 catalyst_jwks_url="http://localhost:8080/jwks"
