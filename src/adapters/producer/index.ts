@@ -3,50 +3,50 @@
 import {CoT}  from '@tak-ps/node-tak';
 import { open, RootDatabase } from 'lmdb';
 import { Config } from '../../config';
+import type {Static} from "@sinclair/typebox";
+import JSONCoT from "@tak-ps/node-cot/lib/types/types";
 
+type CoTMsg = Static<typeof JSONCoT>
 
 export class Producer {
     config: Config;
     dbPath: string;
-    db: any;
+    db: RootDatabase<CoTMsg, string>;
 
     mapSize: number;
-    static initDB: RootDatabase;
+    //static initDB: RootDatabase;
 
     constructor(config: Config) {
         this.config = config;
         this.dbPath = config.producer?.local_db_path || "./db";
         this.mapSize = 2 * 1024 * 1024 * 1024; // 2GB
-        this.initDB()
+        this.db = this.initDB()
     }
 
     /**
      * Initialize the database
      */
-    async initDB() {
+    initDB() {
         try {
             console.log("Opening database")
-            this.db = open({
+            return open<CoTMsg, string>({
                 mapSize: this.mapSize,
                 path: this.dbPath
             })
-            console.log("Database opened")
         } catch (error) {
             console.error("Error opening database", error)
-        
+            throw error
         }
     }
 
     /**
      * Close the database
      */
-    closeDB() {
-
+    async closeDB() {
         try {
             console.log("Closing database")
-            this.db.close()
+            await this.db!.close()
             console.log("Database closed")
-
         } catch (error) {
             console.error("Error closing database", error)
         }
@@ -59,7 +59,7 @@ export class Producer {
     async putCoT(cot: CoT) {
         try {
             const uid = cot.uid();
-            await this.db.put(uid, JSON.stringify(cot.raw.event))
+            await this.db.put(uid, cot.raw)
             console.log(`CoT (${uid}) : stored`)   
 
         } catch (error) {
@@ -68,33 +68,35 @@ export class Producer {
     }
     
     // Method to retrieve CoT from lmdb
-    async getCoT(uid: string) {
+    getCoT(uid: string): CoTMsg | undefined {
         try {
-            const cot = await this.db.get(uid)
+            const cot = this.db.get(uid)
             if (!cot) {
                 console.error(`CoT (${uid}) : not found`)
-                return
+                return undefined
             }
             console.log(`CoT (${uid}) : retrieved`)
-            return JSON.parse(cot);
+            return cot as Static<typeof JSONCoT>;
         } catch (error) {
             console.error("Error retrieving CoT from local database", error)
         }
     }
 
     // Method to retrieve all CoT from lmdb
-    async getAllCoT() {
+    getAllCoT(): CoTMsg[] | undefined  {
         try {
-            const cots = []
+            const currentTime = new Date()
             // What's going on here this should be a method, maybe not setting up type correctly?
-            for (const [key, value] of this.db.getRange()) {
-                console.log("--------------")
-                console.log(value)
-                cots.push(JSON.parse(value))
-            }
+            const cots = this.db.getRange()
+                .filter(({ key, value }) => {
+                    return new Date(value.event._attributes.stale) >= currentTime;
+                })
+                .map(({ key, value }) => {
+                    return value;
+                })
             console.log("All CoT retrieved")
             console.log(cots);
-            return cots
+            return Array.from(cots)
         } catch (error) {
             console.error("Error retrieving all CoT from local database", error)
         }
