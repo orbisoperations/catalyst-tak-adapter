@@ -1,0 +1,7 @@
+aircraftWithinDistance(lat: 38.937620, lon: -77.180400, dist: 50) {
+    hex
+    flight
+    lat
+    lon
+    alt_geom
+ }

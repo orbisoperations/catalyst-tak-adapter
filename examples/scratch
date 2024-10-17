@@ -1,0 +1,17 @@
+<event version="2.0" uid="a66e03" type="a-f-A" how="h-g-i-g-o" time="2024-10-17T20:23:06.595Z" start="2024-10-17T20:23:06.595Z" stale="2024-10-17T20:23:16.595Z">
+  <point lat="39.079559" lon="-76.265955" hae="24750" ce="999999.0" le="999999.0"/>
+  <detail>
+    <_flow-tags_>
+      <NodeCoT-12.6.0>2024-10-17T20:23:06.595Z</NodeCoT-12.6.0>
+    </_flow-tags_>
+  </detail>
+</event>
+
+<event version="2.0" uid="FruitPie" type="a-f-G-U-C" how="h-g-i-g-o" time="2024-10-17T20:23:06.595Z" start="2024-10-17T20:23:06.595Z" stale="2024-10-17T20:23:16.595Z">
+  <point lat="23.581256434114593" lon="119.57055504913984" hae="999999.0" ce="999999.0" le="999999.0"/>
+  <detail>
+    <_flow-tags_>
+      <NodeCoT-12.6.0>2024-10-17T20:23:06.595Z</NodeCoT-12.6.0>
+    </_flow-tags_>
+  </detail>
+</event>
