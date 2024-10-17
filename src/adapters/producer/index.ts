@@ -3,6 +3,12 @@ import { open, RootDatabase } from 'lmdb';
 import { Config } from '../../config';
 import type {Static} from "@sinclair/typebox";
 import JSONCoT from "@tak-ps/node-cot/lib/types/types";
+import { Hono } from 'hono'
+import { createYoga, createSchema } from 'graphql-yoga';
+import { printSchema, lexicographicSortSchema } from 'graphql';
+import {createRemoteJWKSet, jwtVerify} from "jose"
+import {getBunServer} from "hono/dist/types/adapter/bun/server";
+import {Response} from "hono/dist/types/client/types";
 
 type CoTMsg = Static<typeof JSONCoT>
 
@@ -10,7 +16,11 @@ export class Producer {
     config: Config;
     dbPath: string;
     db: RootDatabase<CoTMsg, string>;
-
+    graphqlPort: number;
+    graphqlHost: string;
+    jwksEndpoint: string;
+    appId: string;
+    jwks
     mapSize: number;
     //static initDB: RootDatabase;
 
@@ -19,6 +29,15 @@ export class Producer {
         this.dbPath = config.producer?.local_db_path || "./db";
         this.mapSize = 2 * 1024 * 1024 * 1024; // 2GB
         this.db = this.initDB()
+        this.graphqlHost = config.producer?.graphql_host || "0.0.0.0";
+        this.graphqlPort = config.producer?.graphql_port || 8080;
+        this.jwksEndpoint = config.producer?.catalyst_jwks_endpoint || "https://gateway.catalyst.devintelops.io/.well-known/jwks.json";
+        if (!config.producer?.catalyst_app_id) {
+            throw new Error("Catalyst App ID not found")
+        }
+        this.appId = config.producer?.catalyst_app_id;
+
+        this.jwks = createRemoteJWKSet(new URL(this.jwksEndpoint))
     }
 
     /**
@@ -138,5 +157,105 @@ export class Producer {
             }
         }, 1 * 60 * 1000)
     }    */
+
+    startGraphqlServer() {
+        /*
+* Graphql Stuff
+ */
+
+        const schema = createSchema({
+            typeDefs: `
+        type CoTPoint {
+            lat: Float!
+            lon: Float!
+            hae: Float!
+        }
+        
+        type CoTDetail {
+            callsign: String!
+        }
+        
+        type CoT {
+            version: String!
+            uid: String!
+            type: String!
+            how: String!
+            point: CoTPoint!
+            detail: CoTDetail!
+        }
+        
+        type Query {
+            hello: String!
+            cots: [CoT]!
+            cotWitinRadius(lat: Float!, lon: Float!, radius: Float!): [CoT]!
+        }
+    `,
+            resolvers: {
+                Query: {
+                    hello: () => 'Hello World!',
+                    cots: () => {
+                            return this.getAllCoT()?.map(cot => {
+                                return {
+                                    version: cot.event._attributes.version,
+                                    uid: cot.event._attributes.uid,
+                                    type: cot.event._attributes.type,
+                                    how: cot.event._attributes.how,
+                                    point: {
+                                        lat: cot.event.point._attributes.lat,
+                                        lon: cot.event.point._attributes.lon,
+                                        hae: cot.event.point._attributes.hae
+                                    },
+                                    detail: {
+                                        callsign: cot.event.detail?.contact?._attributes.callsign ?? ""
+                                    }
+                                }
+                            })
+                        return []
+                    }
+                }
+            }
+        })
+
+        const yoga = createYoga({
+            schema: schema,
+            graphqlEndpoint: "/graphql",
+        });
+
+        const app = new Hono()
+
+        app.use("/graphql", async (c) => {
+
+
+            const token = c.req.header("Authorization") ? c.req.header("Authorization")!.split(" ")[1] : ""
+            let valid = false
+            try {
+                const { payload, protectedHeader } = await jwtVerify(token, this.jwks)
+                valid = payload.claims != undefined && (payload.claims as string[]).includes(this.appId)
+                if (!valid) {
+                    console.error("unable to validate jwt")
+                }
+            } catch (e) {
+                console.error("error validating jwt: ", e)
+                valid = false
+            }
+            if (!valid) {
+                return c.text("Unauthorized", 401)
+            }
+            return yoga.handle(c.req.raw);
+        })
+
+        const server = Bun.serve({
+            port: this.graphqlPort,
+            hostname: this.graphqlHost,
+            fetch: app.fetch
+        })
+
+        console.info(
+            `Server is running on ${new URL(
+                yoga.graphqlEndpoint,
+                `http://${server.hostname}:${server.port}`
+            )}`
+        )
+    }
 }
 

@@ -101,6 +101,9 @@ type = "a-f-A"
 catalyst_jwks_url="http://localhost:8080/jwks"
 catalyst_app_id = "thebestappid"
 ```
+### Know Values
+Catalyst JWKS Endpoint - https://gateway.catalyst.devintelops.io/.well-known/jwks.json
+catalyst_query_poll_interval_ms - defaults to 10s
 
 ### TAK section [tak]
 

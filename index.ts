@@ -3,6 +3,7 @@ import {TakClient} from "./src/tak"
 import {getConfig} from "./src/config"
 import {Consumer} from "./src/adapters/consumer"
 import { Producer } from './src/adapters/producer';
+
 /*
 TODO:
 [X] export configs as toml (not envs)
@@ -11,10 +12,10 @@ TODO:
         [X] could be something like KV that uses UID as the key
         [] some sort of event loop to clear stale objects
     [X] capture and parse CoT for storage
-    [] create graphql schema for CoT
-    [] expose the endpoint to catalyst
-    [] key validation from catalyst (JWT)
-    [] return appropriate data for the query
+    [X] create graphql schema for CoT
+    [X] expose the endpoint to catalyst
+    [X] key validation from catalyst (JWT)
+    [X] return appropriate data for the query
 [X] TAK as a consumer
     [X] we need a scheduling mechanism to send data to TAK
     [X] we need a graphlq to query against Catalyst
@@ -34,12 +35,15 @@ if (config.producer) {
     producer = new Producer(config);
 }
 
+/*
+* TAK Client Config and Startup
+ */
+
 const takClient = new TakClient(config)
 await takClient.init()
 
 takClient.start({
     onCoT: async (cot: CoT) => {
-        console.log(cot.to_xml())
         if (producer) await producer.putCoT(cot)
     },
     onPing: async () => {
@@ -57,3 +61,8 @@ if (consumer) {
         }
         , config.consumer?.catalyst_query_poll_interval_ms || 1000)
 }
+
+if (producer) {
+    producer.startGraphqlServer()
+}
+

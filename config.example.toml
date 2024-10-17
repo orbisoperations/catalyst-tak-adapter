@@ -31,6 +31,6 @@ hae = "alt_geom"
 type = "a-f-A"
 
 [producer]
-catalyst_jwks_url="http://localhost:8080/jwks"
+catalyst_jwks_url="https://gateway.catalyst.devintelops.io/.well-known/jwks.json"
 catalyst_app_id = "thebestappid"
 local_db_path="yourdb"
