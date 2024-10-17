@@ -85,7 +85,6 @@ export class Consumer {
                     }
                     if (parser.overwrite) extractedVals = this.overWriteCoTValues(extractedVals, parser.overwrite!)
                     const cotValues = this.fillDefaultCoTValues(extractedVals)
-                    console.log(dataElement, cotValues)
                     cots.push(new CoT({
                         event: {
                             _attributes: {
