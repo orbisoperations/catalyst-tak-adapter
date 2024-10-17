@@ -33,3 +33,4 @@ type = "a-f-A"
 [producer]
 catalyst_jwks_url="http://localhost:8080/jwks"
 catalyst_app_id = "thebestappid"
+local_db_path="yourdb"

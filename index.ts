@@ -1,14 +1,13 @@
 import TAK, {CoT}  from '@tak-ps/node-tak';
-import fs from "fs"
-
 import {TakClient} from "./src/tak"
 import {getConfig} from "./src/config"
 import {Consumer} from "./src/adapters/consumer"
+import { Producer } from './src/adapters/producer';
 /*
 TODO:
 [X] export configs as toml (not envs)
 [] TAK as a data source
-    [] find local db store to use (and install it)
+    [X] find local db store to use (and install it)
         [] could be something like KV that uses UID as the key
         [] some sort of event loop to clear stale objects
     [] capture and parse CoT for storage
@@ -16,11 +15,11 @@ TODO:
     [] expose the endpoint to catalyst
     [] key validation from catalyst (JWT)
     [] return appropriate data for the query
-[] TAK as a consumer
-    [] we need a scheduling mechanism to send data to TAK
-    [] we need a graphlq to query against Catalyst
-    [] we need a way to convert catalyst data to CoT
-    [] we need to send the messages to the TAK server
+[X] TAK as a consumer
+    [X] we need a scheduling mechanism to send data to TAK
+    [X] we need a graphlq to query against Catalyst
+    [X] we need a way to convert catalyst data to CoT
+    [X] we need to send the messages to the TAK server
  */
 
 const extracot = [new CoT(`
@@ -64,6 +63,10 @@ const config = getConfig();
 
 const consumer = new Consumer(config);
 
+const jsonQueryResults = await consumer.doGraphqlQuery()
+const cots = consumer.jsonToCots(jsonQueryResults)
+console.log('-------------------')
+
 const takClient = new TakClient(config)
 await takClient.init()
 takClient.start()
@@ -77,6 +80,13 @@ takClient.setInterval('consumer', (tak: TAK) => {
     }
 , config.consumer?.catalyst_query_poll_interval_ms || 1000)
 
-//consumer.publishCot(cots, takClient.tak!)
-takClient.tak?.write(extracot)
+const producer = new Producer(config);
+// producer.handleStaleCoT();
+await producer.putCoT(extracot[0]);
+await producer.putCoT(extracot[1])
+producer.getAllCoT();
+// await producer.deleteCoT('06ffdc74-fa10-6e37-6280-057491ac7e49')
+// await producer.getCoT('06ffdc74-fa10-6e37-6280-057491ac7e49')
+// await producer.getCoT('06ffdc74-fa10-6e37-6280-057491ac7e40')
+// takClient.tak?.write(cots)
 

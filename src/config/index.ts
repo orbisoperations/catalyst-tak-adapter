@@ -43,7 +43,7 @@ export interface Config{
     producer?: {
         catalyst_jwks_endpoint: string;
         catalyst_app_id: string
-        local_storage_dir: string
+        local_db_path: string
     }
 }
 

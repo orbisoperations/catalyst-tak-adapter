@@ -177,4 +177,5 @@ dist
 key.pem
 cert.pem
 config.toml
+adapter-db/
 config.docker.toml
