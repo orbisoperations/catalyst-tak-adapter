@@ -1,5 +1,3 @@
-
-
 import {CoT}  from '@tak-ps/node-tak';
 import { open, RootDatabase } from 'lmdb';
 import { Config } from '../../config';
