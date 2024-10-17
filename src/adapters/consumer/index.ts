@@ -8,6 +8,7 @@
 
 import {Config, CoTOverwrite, CoTTransform} from "../../config";
 import TAK, {CoT} from "@tak-ps/node-tak";
+import * as ld from "lodash";
 
 interface CoTValues {
     uid?: string
@@ -15,6 +16,7 @@ interface CoTValues {
     lat?: string
     lon?: string
     hae?: string
+    how?: string
     callsign?: string
 }
 
@@ -22,10 +24,9 @@ interface CoTValues {
 
 export class Consumer {
     config: Config
+    poll_interval_ms: number
     constructor(config: Config) {
-        const storagePath = config.consumer?.local_storage_dir ?
-            config.consumer?.local_storage_dir.endsWith("/") ? config.consumer?.local_storage_dir : config.consumer?.local_storage_dir + "/"
-            : "./"
+     
         this.config = config;
 
         if (!this.config.consumer) {
@@ -36,11 +37,7 @@ export class Consumer {
             throw new Error("Catalyst endpoint, query, or token not found")
         }
 
-        if (!this.config.consumer.catalyst_query_poll_interval_ms) {
-            console.warn("Poll interval not found, defaulting to 1 minute")
-            this.config.consumer.catalyst_query_poll_interval_ms = 1 * 60 * 1000
-        }
-
+        this.poll_interval_ms = this.config.consumer.catalyst_query_poll_interval_ms ?? 10 * 1000
 
     }
 
@@ -79,12 +76,15 @@ export class Consumer {
                 const dataToTransform = data[dataName] as any[]
                 for (const dataElement of dataToTransform) {
                     let extractedVals = this.extractCoTValues(dataName, dataElement, parser.transform)
+                    console.log(extractedVals);
                     if (extractedVals === undefined) {
                         console.error("error extracting values for", dataName)
                         continue
                     }
                     if (parser.overwrite) extractedVals = this.overWriteCoTValues(extractedVals, parser.overwrite!)
                     const cotValues = this.fillDefaultCoTValues(extractedVals)
+
+                    console.log(this.poll_interval_ms, new Date(Date.now() + this.poll_interval_ms).toISOString());
                     cots.push(new CoT({
                         event: {
                             _attributes: {
@@ -92,11 +92,16 @@ export class Consumer {
                                 uid: cotValues.uid,
                                 type: cotValues.type,
                                 how: "h-g-i-g-o",
+                                // how: cotValues.how,
                                 time: new Date().toISOString(),
                                 start: new Date().toISOString(),
-                                stale: new Date(Date.now() + this.config.consumer!.catalyst_query_poll_interval_ms).toISOString()
+                                stale: new Date(Date.now() + this.poll_interval_ms).toISOString()
                             },
-                            detail: {},
+                            // detail: {
+                            //     // _attributes: {
+                            //     //     callsign: cotValues.callsign
+                            //     // }
+                            // },
                             point: {
                                 _attributes: {
                                     lat: cotValues.lat,
@@ -116,21 +121,29 @@ export class Consumer {
     }
 
     extractCoTValues(key: string, object: any, transform: CoTTransform): CoTValues | undefined {
-        let uid, type, lat, lon, hae, callsign: string | undefined
-        if (transform.uid && object[transform.uid]) uid = object[transform.uid]
-        if (transform.type && object[transform.type]) type = object[transform.type]
-        if (transform.lat && object[transform.lat]) lat = object[transform.lat]
+        let uid, type, lat, lon, hae, how, callsign: string | undefined
+        // console.log(transform);
+        // console.log("---------")
+        // console.log(object);
+        // console.log(object["detail"]);
+        
+        if (transform.uid && ld.get(object, transform.uid)) uid = ld.get(object, transform.uid)
+        if (transform.type && ld.get(object, transform.type)) type = ld.get(object, transform.type)
+        if (transform.how && ld.get(object, transform.how)) how = ld.get(object, transform.how)
+
+        if (transform.lat && ld.get(object, transform.lat)) lat = ld.get(object, transform.lat)
         else {
             console.error(`lat value not found for ${key}:${uid}`);
             return undefined
         }
-        if (transform.lon && object[transform.lon]) lon = object[transform.lon]
+        if (transform.lon && ld.get(object, transform.lon)) lon = ld.get(object, transform.lon)
         else {
             console.error(`lon value not found for ${key}:${uid}`);
             return undefined
         }
-        if (transform.hae && object[transform.hae]) hae = object[transform.hae]
-        if (transform.callsign && object[transform.callsign]) callsign = object[transform.callsign]
+        if (transform.hae && ld.get(object, transform.hae)) hae = ld.get(object, transform.hae)
+        // if (transform.callsign && object["detail"][transform.callsign]) callsign = object["detail"][transform.callsign]
+        if (transform.callsign && ld.get(object, transform.callsign)) callsign = ld.get(object, transform.callsign)
 
         return {
             uid: uid,
@@ -138,7 +151,8 @@ export class Consumer {
             lat: lat,
             lon: lon,
             hae: hae,
-            callsign: callsign
+            // callsign: callsign,
+            // how: how,
         }
     }
 
