@@ -1,0 +1,16 @@
+[tak]
+key_file="key.pem"
+cert_file="cert.pem"
+connection_id="TestConnection"
+endpoint="ssl://127.0.0.1:8089"
+
+[consumer]
+catalyst_endpoint="http://localhost:8080"
+catalyst_token="testlen"
+catalyst_query= """
+definitely a graphql query
+"""
+
+[producer]
+catalyst_jwks_url="http://localhost:8080/jwks"
+catalyst_app_id = "thebestappid"
