@@ -94,8 +94,6 @@ export class Producer {
                 .map(({ key, value }) => {
                     return value;
                 })
-            console.log("All CoT retrieved")
-            console.log(cots);
             return Array.from(cots)
         } catch (error) {
             console.error("Error retrieving all CoT from local database", error)
@@ -117,7 +115,7 @@ export class Producer {
     }
 
     // Function to check for stale CoT and remove db entries
-    handleStaleCoT() {
+   /* handleStaleCoT() {
         console.log("Starting stale CoT check")
         // Check every 5 mins
         setInterval(async () => {
@@ -141,6 +139,6 @@ export class Producer {
                 
             }
         }, 1 * 60 * 1000)
-    }    
+    }    */
 }
 

@@ -23,18 +23,28 @@ export class TakClient {
         this.tak = await TAK.connect('ConnectionID', new URL(this.config.tak.endpoint), readKeyAndCert(this.config));
     }
 
-    async start() {
+    async start(
+        hooks: {
+            onCoT?: (cot: CoT) => Promise<void>
+            onPing?: () => Promise<void>
+        }
+    ) {
         if (!this.tak) {
             throw new Error('TAK not initialized or connection - please see logs above');
         }
         this.tak.on('cot', async (cot: CoT) => {
-            //console.error('COT', cot); //
+            if(hooks.onCoT) {
+                await hooks.onCoT(cot);
+            }
         }).on('end', async () => {
             console.error(`Connection End`);
         }).on('timeout', async () => {
             console.error(`Connection Timeout`);
         }).on('ping', async () => {
             console.error(`TAK Server Ping`);
+            if(hooks.onPing) {
+                await hooks.onPing();
+            }
         }).on('error', async (err) => {
             console.error(`Connection Error`);
         });
