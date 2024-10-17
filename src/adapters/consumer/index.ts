@@ -1,9 +1,9 @@
 /*
-[] TAK as a consumer
-    [] we need a scheduling mechanism to send data to TAK
+[X] TAK as a consumer
+    [X] we need a scheduling mechanism to send data to TAK
     [X] we need a graphlq to query against Catalyst
-    [] we need a way to convert catalyst data to CoT
-    [] we need to send the messages to the TAK server
+    [X] we need a way to convert catalyst data to CoT
+    [X] we need to send the messages to the TAK server
  */
 
 import {Config, CoTOverwrite, CoTTransform} from "../../config";
