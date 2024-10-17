@@ -28,7 +28,7 @@ export class TakClient {
             throw new Error('TAK not initialized or connection - please see logs above');
         }
         this.tak.on('cot', async (cot: CoT) => {
-            console.error('COT', cot); //
+            //console.error('COT', cot); //
         }).on('end', async () => {
             console.error(`Connection End`);
         }).on('timeout', async () => {
