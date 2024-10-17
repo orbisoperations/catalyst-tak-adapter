@@ -76,15 +76,12 @@ export class Consumer {
                 const dataToTransform = data[dataName] as any[]
                 for (const dataElement of dataToTransform) {
                     let extractedVals = this.extractCoTValues(dataName, dataElement, parser.transform)
-                    console.log(extractedVals);
                     if (extractedVals === undefined) {
                         console.error("error extracting values for", dataName)
                         continue
                     }
                     if (parser.overwrite) extractedVals = this.overWriteCoTValues(extractedVals, parser.overwrite!)
                     const cotValues = this.fillDefaultCoTValues(extractedVals)
-
-                    console.log(this.poll_interval_ms, new Date(Date.now() + this.poll_interval_ms).toISOString());
                     cots.push(new CoT({
                         event: {
                             _attributes: {
@@ -97,11 +94,13 @@ export class Consumer {
                                 start: new Date().toISOString(),
                                 stale: new Date(Date.now() + this.poll_interval_ms).toISOString()
                             },
-                            // detail: {
-                            //     // _attributes: {
-                            //     //     callsign: cotValues.callsign
-                            //     // }
-                            // },
+                            detail: {
+                                contact: {
+                                    _attributes: {
+                                        callsign: cotValues.callsign,
+                                    }
+                                }
+                            },
                             point: {
                                 _attributes: {
                                     lat: cotValues.lat,
@@ -116,17 +115,11 @@ export class Consumer {
                 }
             }
         }
-
         return cots
     }
 
     extractCoTValues(key: string, object: any, transform: CoTTransform): CoTValues | undefined {
         let uid, type, lat, lon, hae, how, callsign: string | undefined
-        // console.log(transform);
-        // console.log("---------")
-        // console.log(object);
-        // console.log(object["detail"]);
-        
         if (transform.uid && ld.get(object, transform.uid)) uid = ld.get(object, transform.uid)
         if (transform.type && ld.get(object, transform.type)) type = ld.get(object, transform.type)
         if (transform.how && ld.get(object, transform.how)) how = ld.get(object, transform.how)
@@ -151,8 +144,8 @@ export class Consumer {
             lat: lat,
             lon: lon,
             hae: hae,
-            // callsign: callsign,
-            // how: how,
+            callsign: callsign,
+            how: how,
         }
     }
 
