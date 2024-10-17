@@ -178,4 +178,5 @@ key.pem
 cert.pem
 **/config.toml
 adapter-db/
+**/*.mdb
 config.docker.toml

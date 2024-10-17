@@ -4,7 +4,10 @@
   "description": "",
   "main": "index.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "bun run index.ts",
+    "test": "bun test",
+    "testw": "bun test --watch",
+    "docker-compose": "docker-compose up --build",
   },
   "keywords": [],
   "author": "",
