@@ -25,6 +25,7 @@ interface CoTValues {
 export class Consumer {
     config: Config
     poll_interval_ms: number
+    catalyst_endpoint: string
     constructor(config: Config) {
      
         this.config = config;
@@ -37,13 +38,15 @@ export class Consumer {
             throw new Error("Catalyst endpoint, query, or token not found")
         }
 
+        this.catalyst_endpoint = this.config.consumer.catalyst_endpoint ?? "https://gateway.catalyst.devintelops.io/graphql"
+
         this.poll_interval_ms = this.config.consumer.catalyst_query_poll_interval_ms ?? 10 * 1000
 
     }
 
     async doGraphqlQuery() {
 
-        const result = await fetch(this.config.consumer!.catalyst_endpoint, {
+        const result = await fetch(this.catalyst_endpoint, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
