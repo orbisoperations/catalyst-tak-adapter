@@ -40,7 +40,7 @@ export class TakClient {
         });
     }
 
-    setInterval(name: string, func: (tak: TAK) => () => Promise<void>, ms: number) {
+    setInterval(name: string, func: (tak: TAK) => Bun.TimerHandler, ms: number) {
         this.timers.set(name, setInterval(func(this.tak!), ms));
     }
 
