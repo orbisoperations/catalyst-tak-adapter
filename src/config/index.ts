@@ -45,6 +45,8 @@ export interface Config{
         catalyst_jwks_endpoint: string;
         catalyst_app_id: string
         local_db_path: string
+        graphql_port: number
+        graphql_host: string
     }
 }
 
