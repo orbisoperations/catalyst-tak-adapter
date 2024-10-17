@@ -1,0 +1,18 @@
+services:
+  adapter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - "./key.pem:/usr/src/app/key.pem"
+      - "./cert.pem:/usr/src/app/cert.pem"
+      - "./config.docker.toml:/usr/src/app/config.toml"
+    networks:
+      tak-network:
+    restart: unless-stopped
+volumes:
+  db_data:
+networks:
+  tak-network:
+    name: tak-server_tak
+    external: true

@@ -177,3 +177,4 @@ dist
 key.pem
 cert.pem
 config.toml
+config.docker.toml
