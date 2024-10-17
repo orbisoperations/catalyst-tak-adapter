@@ -1,0 +1,24 @@
+[tak]
+key_file="key.pem"
+cert_file="cert.pem"
+connection_id="TestConnection"
+endpoint="ssl://127.0.0.1:8089"
+
+[consumer]
+catalyst_endpoint="https://gateway.catalyst.devintelops.io/graphql"
+catalyst_token="yourtokenhere"
+catalyst_query= """
+query {
+  aircraftWithinDistance(lat: 38.937620, lon: -77.180400, dist: 50) {
+    hex
+    flight
+    lat
+    lon
+    alt_geom
+  }
+}
+"""
+
+[producer]
+catalyst_jwks_url="http://localhost:8080/jwks"
+catalyst_app_id = "thebestappid"
