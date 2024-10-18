@@ -18,5 +18,7 @@ RUN ls -al src
 RUN bun install --ignore-scripts
 
 # run the app
+EXPOSE 8080/tcp
 EXPOSE 3000/tcp
+
 ENTRYPOINT [ "bun", "run", "index.ts" ]

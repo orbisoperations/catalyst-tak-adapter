@@ -125,6 +125,13 @@ Opening a tunnel to the fly.io instance:
 fly proxy 10022:22 -a $YOUR_APP_NAME $APP_IP_ADDR 
 ```
 
+Start SFTP session to move creds:
+```bash
+sftp -o "StrictHostKeyChecking=no" \
+            -o "UserKnownHostsFile=/dev/null" \
+            -P 10022 -i ~/.ssh/flytmp root@localhost
+```
+
 
 
 ## Development Steps
