@@ -171,8 +171,32 @@ export class Producer {
             hae: Float!
         }
         
+        type CoTRemarks {
+            source: String
+            to: String
+            time: String
+            text: String
+        }
+        
+        type CoTGroupChat {
+            uids: [String]!
+            id: String!
+        }
+        
+        type CoTChat {
+            parent: String!
+            groupOwner: String!
+            messageId: String!
+            chatRoom: String!
+            id: String!
+            senderCallsign: String!
+            chatGroup: CoTGroupChat
+        }
+        
         type CoTDetail {
             callsign: String!
+            chat: CoTChat
+            remarks: CoTRemarks
         }
         
         type CoT {
@@ -206,11 +230,29 @@ export class Producer {
                                         hae: cot.event.point._attributes.hae
                                     },
                                     detail: {
-                                        callsign: cot.event.detail?.contact?._attributes.callsign ?? ""
+                                        callsign: cot.event.detail?.contact?._attributes.callsign ?? "",
+                                        chat: cot.event.detail?.__chat ?
+                                            {
+                                                parent: cot.event.detail?.__chat._attributes.parent,
+                                                groupOwner: cot.event.detail?.__chat._attributes.groupOwner,
+                                                messageId: cot.event.detail?.__chat._attributes.messageId,
+                                                chatRoom: cot.event.detail?.__chat._attributes.chatroom,
+                                                id: cot.event.detail?.__chat._attributes.id,
+                                                senderCallsign: cot.event.detail?.__chat._attributes.senderCallsign,
+                                                chatGroup: {
+                                                    uid0: Object.entries(cot.event.detail?.__chat.chatgrp).filter(([key, value]) => key !== "id").map(([key, value]) => value),
+                                                    id: cot.event.detail?.__chat.chatgrp.id ?? ""
+                                                }
+                                            } : undefined,
+                                        remarks: cot.event.detail?.remarks ? {
+                                            source: cot.event.detail?.remarks._attributes?.source,
+                                            to: cot.event.detail?.remarks._attributes?.to,
+                                            time: cot.event.detail?.remarks._attributes?.time,
+                                            text:   cot.event.detail?.remarks._text
+                                        }: undefined
                                     }
                                 }
                             })
-                        return []
                     }
                 }
             }
@@ -224,22 +266,24 @@ export class Producer {
         const app = new Hono()
 
         app.use("/graphql", async (c) => {
-
-
-            const token = c.req.header("Authorization") ? c.req.header("Authorization")!.split(" ")[1] : ""
-            let valid = false
-            try {
-                const { payload, protectedHeader } = await jwtVerify(token, this.jwks)
-                valid = payload.claims != undefined && (payload.claims as string[]).includes(this.appId)
-                if (!valid) {
-                    console.error("unable to validate jwt")
+            if(!this.config.dev) {
+                const token = c.req.header("Authorization") ? c.req.header("Authorization")!.split(" ")[1] : ""
+                let valid = false
+                try {
+                    const {payload, protectedHeader} = await jwtVerify(token, this.jwks)
+                    valid = payload.claims != undefined && (payload.claims as string[]).includes(this.appId)
+                    if (!valid) {
+                        console.error("unable to validate jwt")
+                    }
+                } catch (e) {
+                    console.error("error validating jwt: ", e)
+                    valid = false
                 }
-            } catch (e) {
-                console.error("error validating jwt: ", e)
-                valid = false
-            }
-            if (!valid) {
-                return c.text("Unauthorized", 401)
+                if (!valid) {
+                    return c.text("Unauthorized", 401)
+                }
+            } else {
+                console.error("THIS SERVER IS RUNNING IN DEV MODE ADN IS NOT SECURE")
             }
             return yoga.handle(c.req.raw);
         })

@@ -21,6 +21,7 @@ export interface CoTOverwrite {
 }
 
 export interface Config{
+    dev: boolean
     tak: {
         connection_id: string;
         endpoint: string

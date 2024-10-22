@@ -53,6 +53,7 @@ await takClient.init()
 
 takClient.start({
     onCoT: async (cot: CoT) => {
+        console.log("Received CoT: ", cot.to_xml())
         if (producer) await producer.putCoT(cot)
     },
     onPing: async () => {

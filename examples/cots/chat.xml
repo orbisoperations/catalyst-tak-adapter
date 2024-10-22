@@ -1,0 +1,29 @@
+<event version="2.0" uid="GeoChat.ANDROID-16d62d38db9a9dff.All Chat Rooms.1906711f-ef31-466d-9ac5-a3133957100f" type="b-t-f" how="h-g-i-g-o" time="2024-10-18T20:17:05Z" start="2024-10-18T20:17:04Z" stale="2024-10-19T20:17:04Z" access="Undefined">
+    <point lat="38.491921" lon="-121.526068" hae="-31.695" ce="7.0" le="9999999.0"/>
+    <detail>
+        <__chat parent="RootContactGroup" groupOwner="false" messageId="1906711f-ef31-466d-9ac5-a3133957100f" chatroom="All Chat Rooms" id="All Chat Rooms" senderCallsign="TURBO">
+            <chatgrp uid0="ANDROID-16d62d38db9a9dff" uid1="All Chat Rooms" id="All Chat Rooms"/>
+        </__chat>
+        <link uid="ANDROID-16d62d38db9a9dff" type="a-f-G-U-C" relation="p-p"/>
+        <__serverdestination destinations="192.168.4.98:4242:tcp:ANDROID-16d62d38db9a9dff"/>
+        <remarks source="BAO.F.ATAK.ANDROID-16d62d38db9a9dff" to="All Chat Rooms" time="2024-10-18T20:17:04.155Z">at LCC</remarks>
+        <_flow-tags_ TAK-Server-f6edbf55ccfa4af1b4cfa2d7f177ea67="2024-10-18T20:17:05Z">
+            <NodeCoT-12.6.0>2024-10-18T20:17:05.079Z</NodeCoT-12.6.0>
+        </_flow-tags_>
+    </detail>
+</event>
+
+<event version="2.0" uid="GeoChat.ANDROID-16d62d38db9a9dff.All Chat Rooms.cd12fc05-8288-4eaf-9cdb-1b338741da4a" type="b-t-f" how="h-g-i-g-o" time="2024-10-18T20:26:00Z" start="2024-10-18T20:25:59Z" stale="2024-10-19T20:25:59Z" access="Undefined">
+<point lat="38.491919" lon="-121.526073" hae="-31.695" ce="5.5" le="9999999.0"/>
+<detail>
+    <__chat parent="RootContactGroup" groupOwner="false" messageId="cd12fc05-8288-4eaf-9cdb-1b338741da4a" chatroom="All Chat Rooms" id="All Chat Rooms" senderCallsign="TURBO">
+        <chatgrp uid0="ANDROID-16d62d38db9a9dff" uid1="All Chat Rooms" id="All Chat Rooms"/>
+    </__chat>
+    <link uid="ANDROID-16d62d38db9a9dff" type="a-f-G-U-C" relation="p-p"/>
+    <__serverdestination destinations="192.168.4.98:4242:tcp:ANDROID-16d62d38db9a9dff"/>
+    <remarks source="BAO.F.ATAK.ANDROID-16d62d38db9a9dff" to="All Chat Rooms" time="2024-10-18T20:25:59.809Z">at VDO at breach</remarks>
+    <_flow-tags_ TAK-Server-f6edbf55ccfa4af1b4cfa2d7f177ea67="2024-10-18T20:26:00Z">
+    <NodeCoT-12.6.0>2024-10-18T20:26:00.240Z</NodeCoT-12.6.0>
+</_flow-tags_>
+</detail>
+</event>
