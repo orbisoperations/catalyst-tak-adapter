@@ -17,6 +17,7 @@ export interface CoTOverwrite {
     lat?: string
     lon?: string
     hae?: string
+    how?: string
     callsign?: string
 }
 
