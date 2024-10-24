@@ -9,6 +9,7 @@
 import {Config, CoTOverwrite, CoTTransform} from "../../config";
 import TAK, {CoT} from "@tak-ps/node-tak";
 import * as ld from "lodash";
+import { Remarks } from "@tak-ps/node-cot/lib/types/types";
 
 interface CoTValues {
     uid?: string
@@ -18,6 +19,9 @@ interface CoTValues {
     hae?: string
     how?: string
     callsign?: string
+    // remarks?: string
+    // remarks?: Object
+    remarks?: typeof Remarks
 }
 
 
@@ -58,7 +62,6 @@ export class Consumer {
                 variables: new Object(this.config.consumer!.catalyst_query_variables)
             }),
         })
-
         return  await result.json()
     }
 
@@ -78,14 +81,16 @@ export class Consumer {
             } else {
                 const dataToTransform = data[dataName] as any[]
                 for (const dataElement of dataToTransform) {
+
                     let extractedVals = this.extractCoTValues(dataName, dataElement, parser.transform)
                     if (extractedVals === undefined) {
                         console.error("error extracting values for", dataName)
                         continue
                     }
+
                     if (parser.overwrite) extractedVals = this.overWriteCoTValues(extractedVals, parser.overwrite!)
                     const cotValues = this.fillDefaultCoTValues(extractedVals)
-                    const cot = new CoT({
+                    const formedCot = new CoT({
                         event: {
                             _attributes: {
                                 version: "2.0",
@@ -101,6 +106,33 @@ export class Consumer {
                                     _attributes: {
                                         callsign: cotValues.callsign,
                                     }
+                                },
+                                // __chat: {
+                                //     _attributes: {
+                                //         parent: "RootContactGroup",
+                                //         groupOwner: "false",
+                                //         // messageId: "0",
+                                //         chatroom: "All Chat Rooms",
+                                //         id: "All Chat Rooms",
+                                //         senderCallsign: cotValues.callsign,
+                                //     },
+                                //     chatgrp: {
+                                //         _attributes: {
+                                //             uid0: cotValues.callsign,
+                                //             uid1: "All Chat Rooms",
+                                //             id: "All Chat Rooms",
+                                //         }
+
+                                //     }
+                                // },
+                                remarks: {
+                                   _attributes: {
+                                        time: new Date().toISOString(),
+                                        source: cotValues.remarks.source,
+                                        to: cotValues.remarks.to
+                                   },
+                                    // _text: cotValues.remarks
+                                    _text: cotValues.remarks.text
                                 }
                             },
                             point: {
@@ -114,15 +146,22 @@ export class Consumer {
                             },
                         }
                     })
-                    cots.push(cot)
+                    cots.push(formedCot)
                 }
             }
         }
+        // console.log(cots[0].raw);
         return cots
     }
 
+    // Parse CoT Chat Event
+
+
+
     extractCoTValues(key: string, object: any, transform: CoTTransform): CoTValues | undefined {
+        // let uid, type, lat, lon, hae, how, callsign, remarks: string | undefined
         let uid, type, lat, lon, hae, how, callsign: string | undefined
+        let remarks: Object = {}
         if (transform.uid && ld.get(object, transform.uid)) uid = ld.get(object, transform.uid)
         if (transform.type && ld.get(object, transform.type)) type = ld.get(object, transform.type)
         if (transform.how && ld.get(object, transform.how)) how = ld.get(object, transform.how)
@@ -138,8 +177,10 @@ export class Consumer {
             return undefined
         }
         if (transform.hae && ld.get(object, transform.hae)) hae = ld.get(object, transform.hae)
-        // if (transform.callsign && object["detail"][transform.callsign]) callsign = object["detail"][transform.callsign]
+
         if (transform.callsign && ld.get(object, transform.callsign)) callsign = ld.get(object, transform.callsign)
+        if (transform.remarks && ld.get(object, transform.remarks)) remarks = ld.get(object, transform.remarks)
+
 
         return {
             uid: uid,
@@ -149,6 +190,7 @@ export class Consumer {
             hae: hae,
             callsign: callsign,
             how: how,
+            remarks: remarks
         }
     }
 

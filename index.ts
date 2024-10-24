@@ -57,9 +57,10 @@ takClient.start({
         if (producer) await producer.putCoT(cot)
     },
     onPing: async () => {
-        if (producer) console.error("all messages: ", producer.getAllCoT()?.map(cot => cot.event._attributes.uid))
+        if (producer) console.error("all messages: ", producer.getAllCoT()?.map(cot => cot.event.detail.remarks))
     }
 })
+
 
 if (consumer) {
     takClient.setInterval('consumer', (tak: TAK) => {
@@ -67,6 +68,9 @@ if (consumer) {
                 const jsonResults = await consumer.doGraphqlQuery()
                 const cots = consumer.jsonToCots(jsonResults)
                 consumer.publishCot(cots, tak)
+                // console.log('hey')
+                // consumer.publishCot([new CoT(`<event version="2.0" uid="GeoChat.ff1c0089-695c-a6c6-5a80-a56301a31688.8b52a385-bf8c-6fa1-4a84-da418a1e9007" type="b-t-f" how="h-g-i-g-o" time="2024-10-24T12:03:58Z" start="2024-10-24T12:03:58Z" stale="2025-02-17T05:50:38Z"><point lat="25.0353499" lon="121.5690985" hae="999999.0" ce="999999.0" le="999999.0"/><detail><__chat chatroom="All Chat Rooms" senderCallsign="GHOST WALKER199" parent="RootContactGroup" groupOwner="false" id="All Chat Rooms"><chatgrp id="All Chat Rooms" uid0="ff1c0089-695c-a6c6-5a80-a56301a31688" uid1="All Chat Rooms"/></__chat><remarks time="2024-10-24T12:03:58Z" source="ff1c0089-695c-a6c6-5a80-a56301a31688" to="All Chat Rooms">i</remarks><link relation="p-p" type="a-f-G-U-C-I" uid="ff1c0089-695c-a6c6-5a80-a56301a31688"/><_flow-tags_ TAK-Server-3abc9530735f4a3093430a1334481205="2024-10-24T12:03:58Z"><NodeCoT-12.6.0>2024-10-24T12:03:59.015Z</NodeCoT-12.6.0></_flow-tags_></detail></event>`)], tak)
+
             }
         }
         , config.consumer?.catalyst_query_poll_interval_ms || 1000)
@@ -76,3 +80,4 @@ if (producer) {
     producer.startGraphqlServer()
 }
 
+// consumer?.publishCot([new CoT(`<event version="2.0" uid="GeoChat.ff1c0089-695c-a6c6-5a80-a56301a31688.8b52a385-bf8c-6fa1-4a84-da418a1e9009" type="b-t-f" how="h-g-i-g-o" time="2024-10-24T12:03:58Z" start="2024-10-24T12:03:58Z" stale="2025-02-17T05:50:38Z"><point lat="25.0353499" lon="121.5690985" hae="999999.0" ce="999999.0" le="999999.0"/><detail><__chat chatroom="All Chat Rooms" senderCallsign="GHOST WALKER199" parent="RootContactGroup" groupOwner="false" id="All Chat Rooms"><chatgrp id="All Chat Rooms" uid0="ff1c0089-695c-a6c6-5a80-a56301a31688" uid1="All Chat Rooms"/></__chat><remarks time="2024-10-24T12:03:58Z" source="ff1c0089-695c-a6c6-5a80-a56301a31688" to="All Chat Rooms">hi</remarks><link relation="p-p" type="a-f-G-U-C-I" uid="ff1c0089-695c-a6c6-5a80-a56301a31688"/><_flow-tags_ TAK-Server-3abc9530735f4a3093430a1334481205="2024-10-24T12:03:58Z"><NodeCoT-12.6.0>2024-10-24T12:03:59.015Z</NodeCoT-12.6.0></_flow-tags_></detail></event>`)], takClient.tak!)
