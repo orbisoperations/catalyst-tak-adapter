@@ -14,4 +14,3 @@ helm-charts
 .idea
 coverage*
 *.pem
-*.toml
