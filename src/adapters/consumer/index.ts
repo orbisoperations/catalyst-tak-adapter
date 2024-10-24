@@ -29,7 +29,7 @@ export class Consumer {
     poll_interval_ms: number
     catalyst_endpoint: string
     dbPath: string
-    db: RootDatabase<boolean, string>;
+    db: RootDatabase<string, string>;
 
     constructor(config: Config) {
      
@@ -54,7 +54,7 @@ export class Consumer {
     initDB() {
         try {
             console.log("Opening database")
-            return open<boolean, string>({
+            return open<string, string>({
                 mapSize: 2 * 1024 * 1024 * 1024, // 2GB
                 path: this.dbPath
             })
@@ -103,17 +103,6 @@ export class Consumer {
                         continue
                     }
                     const messageId = ld.get(dataElement, chatParser.message_id, undefined)
-                    if (messageId === undefined) {
-                        console.error("message_id not found for", dataName)
-                        continue
-                    }
-
-                    if(this.db.get(messageId)) {
-                        console.log("message already sent", messageId)
-                        continue
-                    } else {
-                       await this.db.put(messageId, true)
-                    }
 
                     // build map of message variables
                     let msgVars: [string, string][] = []
@@ -124,6 +113,18 @@ export class Consumer {
                     let message = chatParser.message_template
                     for (const [key, value] of msgVars) {
                         message = message.replace(`{${key}}`, value)
+                    }
+
+                    if (messageId === undefined) {
+                        console.error("message_id not found for", dataName)
+                        continue
+                    }
+
+                    if(this.db.get(messageId) && this.db.get(messageId) === message) {
+                        console.log("message already sent and has not changed", messageId)
+                        continue
+                    } else {
+                        await this.db.put(messageId, message)
                     }
 
                     const recipient = chatParser.recipient ?? "All Chat Rooms"

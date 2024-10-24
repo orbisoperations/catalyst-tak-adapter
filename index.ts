@@ -88,7 +88,6 @@ if (consumer) {
                 const jsonResults = await consumer.doGraphqlQuery()
                 const cots = consumer.jsonToCots(jsonResults)
                 const msgCots = await consumer.jsonToGeoChat(jsonResults)
-                console.log("chats:", msgCots)
                 consumer.publishCot([...cots, ...msgCots], tak)
             }
         }
