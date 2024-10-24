@@ -85,14 +85,13 @@ export class Consumer {
                     }
                     if (parser.overwrite) extractedVals = this.overWriteCoTValues(extractedVals, parser.overwrite!)
                     const cotValues = this.fillDefaultCoTValues(extractedVals)
-                    cots.push(new CoT({
+                    const cot = new CoT({
                         event: {
                             _attributes: {
                                 version: "2.0",
                                 uid: cotValues.uid,
                                 type: cotValues.type,
-                                how: "h-g-i-g-o",
-                                // how: cotValues.how,
+                                how: cotValues.how,
                                 time: new Date().toISOString(),
                                 start: new Date().toISOString(),
                                 stale: new Date(Date.now() + this.poll_interval_ms).toISOString()
@@ -114,7 +113,8 @@ export class Consumer {
                                 }
                             },
                         }
-                    }))
+                    })
+                    cots.push(cot)
                 }
             }
         }
@@ -160,6 +160,7 @@ export class Consumer {
         if (transform.hae) CoTVals.hae = transform.hae
         if (transform.callsign) CoTVals.callsign = transform.callsign
         if (transform.type) CoTVals.type = transform.type
+        if (transform.how) CoTVals.how = transform.how
 
         return CoTVals
     }
@@ -169,6 +170,7 @@ export class Consumer {
         if (!cotValues.type) cotValues.type = "a-f-G"
         if (!cotValues.hae) cotValues.hae = "999999.0"
         if (!cotValues.callsign) cotValues.callsign = ""
+        if (!cotValues.how) cotValues.how = "h-g-i-g-o"
 
         return cotValues
     }
