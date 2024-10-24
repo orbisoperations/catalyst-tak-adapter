@@ -20,6 +20,7 @@ export interface CoTOverwrite {
     hae?: string
     how?: string
     callsign?: string
+    remarks?: string
 }
 
 export interface Config{

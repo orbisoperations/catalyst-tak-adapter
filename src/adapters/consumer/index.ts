@@ -19,6 +19,7 @@ interface CoTValues {
     hae?: string
     how?: string
     callsign?: string
+    remarks?: string
 }
 
 
@@ -237,6 +238,9 @@ export class Consumer {
                                         callsign: cotValues.callsign,
                                     }
                                 },
+                                remarks: {
+                                    _text: cotValues.remarks
+                                }
                             },
                             point: {
                                 _attributes: {
@@ -261,7 +265,7 @@ export class Consumer {
 
     extractCoTValues(key: string, object: any, transform: CoTTransform): CoTValues | undefined {
         // let uid, type, lat, lon, hae, how, callsign, remarks: string | undefined
-        let uid, type, lat, lon, hae, how, callsign: string | undefined
+        let uid, type, lat, lon, hae, how, callsign, remarks: string | undefined
         if (transform.uid && ld.get(object, transform.uid)) uid = ld.get(object, transform.uid)
         if (transform.type && ld.get(object, transform.type)) type = ld.get(object, transform.type)
         if (transform.how && ld.get(object, transform.how)) how = ld.get(object, transform.how)
@@ -280,7 +284,7 @@ export class Consumer {
 
         if (transform.callsign && ld.get(object, transform.callsign)) callsign = ld.get(object, transform.callsign)
 
-
+        if (transform.remarks && ld.get(object, transform.remarks)) remarks = ld.get(object, transform.remarks)
         return {
             uid: uid,
             type: type,
@@ -288,7 +292,8 @@ export class Consumer {
             lon: lon,
             hae: hae,
             callsign: callsign,
-            how: how
+            how: how,
+            remarks: remarks
         }
     }
 
@@ -301,6 +306,7 @@ export class Consumer {
         if (transform.callsign) CoTVals.callsign = transform.callsign
         if (transform.type) CoTVals.type = transform.type
         if (transform.how) CoTVals.how = transform.how
+        if (transform.remarks) CoTVals.remarks = transform.remarks
 
         return CoTVals
     }
@@ -311,6 +317,7 @@ export class Consumer {
         if (!cotValues.hae) cotValues.hae = "999999.0"
         if (!cotValues.callsign) cotValues.callsign = ""
         if (!cotValues.how) cotValues.how = "h-g-i-g-o"
+        if (!cotValues.remarks) cotValues.remarks = ""
 
         return cotValues
     }

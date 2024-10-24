@@ -182,3 +182,4 @@ yourdb/
 ./**/*.mdb
 config.docker.toml
 config.fly.toml
+db/*/**
