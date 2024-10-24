@@ -9,6 +9,7 @@ export interface CoTTransform {
     hae?: string
     how?: string
     callsign?: string
+    remarks?: string
 }
 
 export interface CoTOverwrite {
