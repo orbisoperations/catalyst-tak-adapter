@@ -4,13 +4,13 @@
 #
 
 app = 'catalyst-tak-adapter'
-primary_region = 'nrt'
+primary_region = 'ord'
 
 [build]
   dockerfile = 'Dockerfile'
 
 [mounts]
-source = "adapter_data"
+source = "adapter_data_ord"
 destination = "/data"
 
 [env]
