@@ -61,6 +61,111 @@ export class Consumer {
         return  await result.json()
     }
 
+    jsonToGeoChat(json: any): CoT[] {
+        const data = json.data
+        const senderUID = this.config?.tak.callsign?? "CATALYST"
+        const chatParsers = this.config.consumer?.chat
+        if (chatParsers === undefined) {
+            console.warn("no chat transforms have been found and unable to convert data to CoT")
+            return []
+        }
+        console.log("chat parsers", chatParsers)
+        let cots: CoT[] = []
+        for (const [dataName, chatParser] of Object.entries(chatParsers)) {
+            if (data[dataName] === undefined) {
+                console.error("key not found to generate chats in data", dataName)
+            } else {
+                const dataToTransform = data[dataName] as any[]
+                console.log("dataToTransform", dataToTransform)
+                for (const dataElement of dataToTransform) {
+                    console.log("de ", dataElement)
+                    // build map of message variables
+                    let msgVars: [string, string][] = []
+                    for (const [key, value] of Object.entries(chatParser.message_vars)) {
+                        ld.get(dataElement, value) ? msgVars.push([key, ld.get(dataElement, value)]) : console.error("value not found for", key)
+                    }
+                    console.log("msgVars", msgVars)
+                    // build message
+                    let message = chatParser.message_template
+                    for (const [key, value] of msgVars) {
+                        message = message.replace(`{${key}}`, value)
+                    }
+
+                    console.log("message", message)
+                    const recipient = chatParser.recipient ?? "All Chat Rooms"
+                    // build CoT
+                    if (!chatParser.message_id) {
+                        console.error("message_id not found and cannot send for", dataName)
+                        continue
+                    }
+                    const messageId = ld.get(dataElement, chatParser.message_id)
+                    const cot = new CoT({
+                        event: {
+                            _attributes: {
+                                version: "2.0",
+                                uid: `GeoChat.${senderUID}.${recipient}.${messageId}`,
+                                type: "b-t-f",
+                                how: "h-g-i-g-o",
+                                time: new Date().toISOString(),
+                                start: new Date().toISOString(),
+                                stale: new Date(Date.now() + (7 * 24 * 60 * 60 * 1000)).toISOString(),
+                                access: "Undefined"
+                            },
+                            point: {
+                                _attributes: {
+                                    lat: this.config.tak.catalyst_lat ?? -64.0107,
+                                    lon: this.config.tak.catalyst_lon ?? -59.4520,
+                                    hae: "999999.0",
+                                    ce: "999999.0",
+                                    le: "999999.0"
+                                }
+                            },
+                            detail: {
+                                __chat: {
+                                    _attributes: {
+                                        senderCallsign: senderUID,
+                                        chatroom: recipient,
+                                        id: recipient,
+                                        messageId: messageId,
+                                        parent: "RootContactGroup",
+                                        groupOwner: "false"
+                                    },
+                                    chatgrp: {
+                                        _attributes: {
+                                            id: recipient,
+                                            uid0: senderUID,
+                                            uid1: recipient
+                                        }
+                                    }
+                                },
+                                remarks: {
+                                    _attributes: {
+                                        time: new Date().toISOString(),
+                                        source: senderUID,
+                                        to: recipient,
+                                    },
+                                    _text: message
+                                },
+                                link: {
+                                    _attributes: {
+                                        relation: "p-p",
+                                        type: "a-f-G-U-C-I",
+                                        uid: senderUID
+                                    }
+                                }
+                            }
+
+                        }
+                    })
+                    console.log("cot", cot.to_xml())
+                    cots.push(cot)
+                }
+
+            }
+        }
+        return cots
+    }
+
     jsonToCots(json: any) {
         const data = json.data
         // specific airplane
@@ -124,8 +229,6 @@ export class Consumer {
     }
 
     // Parse CoT Chat Event
-
-
 
     extractCoTValues(key: string, object: any, transform: CoTTransform): CoTValues | undefined {
         // let uid, type, lat, lon, hae, how, callsign, remarks: string | undefined
