@@ -9,6 +9,7 @@
 import {Config, CoTOverwrite, CoTTransform} from "../../config";
 import TAK, {CoT} from "@tak-ps/node-tak";
 import * as ld from "lodash";
+import {open, RootDatabase} from "lmdb";
 
 interface CoTValues {
     uid?: string
@@ -26,10 +27,13 @@ export class Consumer {
     config: Config
     poll_interval_ms: number
     catalyst_endpoint: string
+    dbPath: string
+    db: RootDatabase<boolean, string>;
+
     constructor(config: Config) {
      
         this.config = config;
-
+        this.dbPath = config.consumer?.local_db_path || "./db/consumer";
         if (!this.config.consumer) {
             throw new Error("Consumer config not found")
         }
@@ -42,6 +46,21 @@ export class Consumer {
 
         this.poll_interval_ms = this.config.consumer.catalyst_query_poll_interval_ms ?? 10 * 1000
 
+        this.db = this.initDB()
+
+    }
+
+    initDB() {
+        try {
+            console.log("Opening database")
+            return open<boolean, string>({
+                mapSize: 2 * 1024 * 1024 * 1024, // 2GB
+                path: this.dbPath
+            })
+        } catch (error) {
+            console.error("Error opening database", error)
+            throw error
+        }
     }
 
     async doGraphqlQuery() {
@@ -61,7 +80,7 @@ export class Consumer {
         return  await result.json()
     }
 
-    jsonToGeoChat(json: any): CoT[] {
+    async jsonToGeoChat(json: any): Promise<CoT[]> {
         const data = json.data
         const senderUID = this.config?.tak.callsign?? "CATALYST"
         const chatParsers = this.config.consumer?.chat
@@ -78,27 +97,37 @@ export class Consumer {
                 const dataToTransform = data[dataName] as any[]
                 console.log("dataToTransform", dataToTransform)
                 for (const dataElement of dataToTransform) {
-                    console.log("de ", dataElement)
+                    if (!chatParser.message_id) {
+                        console.error("message_id not found and cannot send for", dataName)
+                        continue
+                    }
+                    const messageId = ld.get(dataElement, chatParser.message_id, undefined)
+                    if (messageId === undefined) {
+                        console.error("message_id not found for", dataName)
+                        continue
+                    }
+
+                    if(this.db.get(messageId)) {
+                        console.log("message already sent", messageId)
+                        continue
+                    } else {
+                       await this.db.put(messageId, true)
+                    }
+
                     // build map of message variables
                     let msgVars: [string, string][] = []
                     for (const [key, value] of Object.entries(chatParser.message_vars)) {
                         ld.get(dataElement, value) ? msgVars.push([key, ld.get(dataElement, value)]) : console.error("value not found for", key)
                     }
-                    console.log("msgVars", msgVars)
                     // build message
                     let message = chatParser.message_template
                     for (const [key, value] of msgVars) {
                         message = message.replace(`{${key}}`, value)
                     }
 
-                    console.log("message", message)
                     const recipient = chatParser.recipient ?? "All Chat Rooms"
                     // build CoT
-                    if (!chatParser.message_id) {
-                        console.error("message_id not found and cannot send for", dataName)
-                        continue
-                    }
-                    const messageId = ld.get(dataElement, chatParser.message_id)
+
                     const cot = new CoT({
                         event: {
                             _attributes: {

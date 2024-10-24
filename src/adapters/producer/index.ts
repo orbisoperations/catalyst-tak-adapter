@@ -22,7 +22,7 @@ export class Producer {
 
     constructor(config: Config) {
         this.config = config;
-        this.dbPath = config.producer?.local_db_path || "./db";
+        this.dbPath = config.producer?.local_db_path || "./db/producer";
         this.mapSize = 2 * 1024 * 1024 * 1024; // 2GB
         this.db = this.initDB()
         this.graphqlHost = config.producer?.graphql_host || "0.0.0.0";

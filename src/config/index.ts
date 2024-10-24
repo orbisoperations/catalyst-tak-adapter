@@ -41,7 +41,7 @@ export interface Config{
         catalyst_query: string
         catalyst_query_variables: Record<string, any>
         catalyst_query_poll_interval_ms: number
-        local_storage_dir: string
+        local_db_path: string
         parser: {
             [key: string]: {
                 transform: CoTTransform
