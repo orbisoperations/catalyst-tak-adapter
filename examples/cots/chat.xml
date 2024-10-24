@@ -1,31 +1,17 @@
-<event version="2.0" uid="GeoChat.ANDROID-16d62d38db9a9dff.All Chat Rooms.1906711f-ef31-466d-9ac5-a3133957100f" type="b-t-f" how="h-g-i-g-o" time="2024-10-18T20:17:05Z" start="2024-10-18T20:17:04Z" stale="2024-10-19T20:17:04Z" access="Undefined">
-    <point lat="38.491921" lon="-121.526068" hae="-31.695" ce="7.0" le="9999999.0"/>
+<event version="2.0" uid="GeoChat.ANDROID-16d62d38db9a9dff.All Chat Rooms.972a68d4-108f-4ec6-ac2f-259fd09a8965" type="b-t-f" how="h-g-i-g-o" time="2024-10-24T22:32:30Z" start="2024-10-24T22:32:30Z" stale="2024-10-25T22:32:30Z"
+       access="Undefined">
+    <point lat="38.491979" lon="-121.526124" hae="-40.895" ce="4.5" le="9999999.0"/>
     <detail>
-        <__chat parent="RootContactGroup" groupOwner="false" messageId="1906711f-ef31-466d-9ac5-a3133957100f" chatroom="All Chat Rooms" id="All Chat Rooms" senderCallsign="TURBO">
+        <__chat parent="RootContactGroup" groupOwner="false" messageId="972a68d4-108f-4ec6-ac2f-259fd09a8965" chatroom="All Chat Rooms" id="All Chat Rooms" senderCallsign="TURBO">
             <chatgrp uid0="ANDROID-16d62d38db9a9dff" uid1="All Chat Rooms" id="All Chat Rooms"/>
         </__chat>
         <link uid="ANDROID-16d62d38db9a9dff" type="a-f-G-U-C" relation="p-p"/>
         <__serverdestination destinations="192.168.4.98:4242:tcp:ANDROID-16d62d38db9a9dff"/>
-        <remarks source="BAO.F.ATAK.ANDROID-16d62d38db9a9dff" to="All Chat Rooms" time="2024-10-18T20:17:04.155Z">at LCC</remarks>
-        <_flow-tags_ TAK-Server-f6edbf55ccfa4af1b4cfa2d7f177ea67="2024-10-18T20:17:05Z">
-            <NodeCoT-12.6.0>2024-10-18T20:17:05.079Z</NodeCoT-12.6.0>
+        <remarks source="BAO.F.ATAK.ANDROID-16d62d38db9a9dff" to="All Chat Rooms" time="2024-10-24T22:32:30.371Z">Roger</remarks>
+        <_flow-tags_ TAK-Server-f6edbf55ccfa4af1b4cfa2d7f177ea67="2024-10-24T22:32:30Z">
+            <NodeCoT-12.6.0>2024-10-24T22:32:30.492Z</NodeCoT-12.6.0>
         </_flow-tags_>
     </detail>
 </event>
 
-<event version="2.0" uid="GeoChat.ANDROID-16d62d38db9a9dff.All Chat Rooms.cd12fc05-8288-4eaf-9cdb-1b338741da4a" type="b-t-f" how="h-g-i-g-o" time="2024-10-18T20:26:00Z" start="2024-10-18T20:25:59Z" stale="2024-10-19T20:25:59Z" access="Undefined">
-<point lat="38.491919" lon="-121.526073" hae="-31.695" ce="5.5" le="9999999.0"/>
-<detail>
-    <__chat parent="RootContactGroup" groupOwner="false" messageId="cd12fc05-8288-4eaf-9cdb-1b338741da4a" chatroom="All Chat Rooms" id="All Chat Rooms" senderCallsign="TURBO">
-        <chatgrp uid0="ANDROID-16d62d38db9a9dff" uid1="All Chat Rooms" id="All Chat Rooms"/>
-    </__chat>
-    <link uid="ANDROID-16d62d38db9a9dff" type="a-f-G-U-C" relation="p-p"/>
-    <__serverdestination destinations="192.168.4.98:4242:tcp:ANDROID-16d62d38db9a9dff"/>
-    <remarks source="BAO.F.ATAK.ANDROID-16d62d38db9a9dff" to="All Chat Rooms" time="2024-10-18T20:25:59.809Z">at VDO at breach</remarks>
-    <_flow-tags_ TAK-Server-f6edbf55ccfa4af1b4cfa2d7f177ea67="2024-10-18T20:26:00Z">
-    <NodeCoT-12.6.0>2024-10-18T20:26:00.240Z</NodeCoT-12.6.0>
-</_flow-tags_>
-</detail>
-</event>
-
-<event version="2.0" uid="GeoChat.ff1c0089-695c-a6c6-5a80-a56301a31688.8b52a385-bf8c-6fa1-4a84-da418a1e9009" type="b-t-f" how="h-g-i-g-o" time="2024-10-24T12:03:58Z" start="2024-10-24T12:03:58Z" stale="2025-02-17T05:50:38Z"><point lat="25.0353499" lon="121.5690985" hae="999999.0" ce="999999.0" le="999999.0"/><detail><__chat chatroom="All Chat Rooms" senderCallsign="GHOST WALKER199" parent="RootContactGroup" groupOwner="false" id="All Chat Rooms"><chatgrp id="All Chat Rooms" uid0="ff1c0089-695c-a6c6-5a80-a56301a31688" uid1="All Chat Rooms"/></__chat><remarks time="2024-10-24T12:03:58Z" source="ff1c0089-695c-a6c6-5a80-a56301a31688" to="All Chat Rooms">hi</remarks><link relation="p-p" type="a-f-G-U-C-I" uid="ff1c0089-695c-a6c6-5a80-a56301a31688"/><_flow-tags_ TAK-Server-3abc9530735f4a3093430a1334481205="2024-10-24T12:03:58Z"><NodeCoT-12.6.0>2024-10-24T12:03:59.015Z</NodeCoT-12.6.0></_flow-tags_></detail></event>
+<event version="2.0" uid="GeoChat.CATALYST.All Chat Rooms.IMAGINE__ALIKE__FROZEN" type="b-t-f" how="h-g-i-g-o" time="2024-10-24T22:38:43.999Z" start="2024-10-24T22:38:43.999Z" stale="2024-10-31T22:38:43.999Z" access="Undefined"><point lat="-64.0107" lon="-59.452" hae="999999.0" ce="999999.0" le="999999.0"/><detail><__chat senderCallsign="CATALYST" chatroom="All Chat Rooms" id="All Chat Rooms" messageId="IMAGINE__ALIKE__FROZEN" parent="RootContactGroup" groupOwner="false"><chatgrp id="All Chat Rooms" uid0="CATALYST" uid1="All Chat Rooms"/></__chat><remarks time="2024-10-24T22:38:43.999Z" source="CATALYST" to="All Chat Rooms">Ping 2 happening at Taipei</remarks><link relation="p-p" type="a-f-G-U-C-I" uid="CATALYST"/><_flow-tags_><NodeCoT-12.6.0>2024-10-24T22:38:43.999Z</NodeCoT-12.6.0></_flow-tags_></detail></event>

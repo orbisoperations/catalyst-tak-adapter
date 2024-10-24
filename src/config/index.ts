@@ -48,6 +48,16 @@ export interface Config{
                 overwrite?: CoTOverwrite
             }
         }
+        chat: {
+            [key: string]: {
+                recipient: string
+                message_id: string
+                message_vars: {
+                    [key: string]: string
+                }
+                message_template: string
+            }
+        }
     },
     producer?: {
         catalyst_jwks_endpoint: string;
