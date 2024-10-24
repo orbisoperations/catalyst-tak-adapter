@@ -162,9 +162,7 @@ export class Producer {
         /*
 * Graphql Stuff
  */
-
-        const schema = createSchema({
-            typeDefs: `
+        const typeDefs = `
         type CoTPoint {
             lat: Float!
             lon: Float!
@@ -212,8 +210,11 @@ export class Producer {
             hello: String!
             cots: [CoT]!
             cotWitinRadius(lat: Float!, lon: Float!, radius: Float!): [CoT]!
+            _sdl: String!
         }
-    `,
+    `
+        const schema = createSchema({
+            typeDefs: typeDefs,
             resolvers: {
                 Query: {
                     hello: () => 'Hello World!',
@@ -253,7 +254,8 @@ export class Producer {
                                     }
                                 }
                             })
-                    }
+                    },
+                    _sdl: () => typeDefs
                 }
             }
         })
