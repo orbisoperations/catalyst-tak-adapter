@@ -9,7 +9,6 @@
 import {Config, CoTOverwrite, CoTTransform} from "../../config";
 import TAK, {CoT} from "@tak-ps/node-tak";
 import * as ld from "lodash";
-import { Remarks } from "@tak-ps/node-cot/lib/types/types";
 
 interface CoTValues {
     uid?: string
@@ -19,9 +18,6 @@ interface CoTValues {
     hae?: string
     how?: string
     callsign?: string
-    // remarks?: string
-    // remarks?: Object
-    remarks?: typeof Remarks
 }
 
 
@@ -107,33 +103,6 @@ export class Consumer {
                                         callsign: cotValues.callsign,
                                     }
                                 },
-                                // __chat: {
-                                //     _attributes: {
-                                //         parent: "RootContactGroup",
-                                //         groupOwner: "false",
-                                //         // messageId: "0",
-                                //         chatroom: "All Chat Rooms",
-                                //         id: "All Chat Rooms",
-                                //         senderCallsign: cotValues.callsign,
-                                //     },
-                                //     chatgrp: {
-                                //         _attributes: {
-                                //             uid0: cotValues.callsign,
-                                //             uid1: "All Chat Rooms",
-                                //             id: "All Chat Rooms",
-                                //         }
-
-                                //     }
-                                // },
-                                remarks: {
-                                   _attributes: {
-                                        time: new Date().toISOString(),
-                                        source: cotValues.remarks.source,
-                                        to: cotValues.remarks.to
-                                   },
-                                    // _text: cotValues.remarks
-                                    _text: cotValues.remarks.text
-                                }
                             },
                             point: {
                                 _attributes: {
@@ -161,7 +130,6 @@ export class Consumer {
     extractCoTValues(key: string, object: any, transform: CoTTransform): CoTValues | undefined {
         // let uid, type, lat, lon, hae, how, callsign, remarks: string | undefined
         let uid, type, lat, lon, hae, how, callsign: string | undefined
-        let remarks: Object = {}
         if (transform.uid && ld.get(object, transform.uid)) uid = ld.get(object, transform.uid)
         if (transform.type && ld.get(object, transform.type)) type = ld.get(object, transform.type)
         if (transform.how && ld.get(object, transform.how)) how = ld.get(object, transform.how)
@@ -179,7 +147,6 @@ export class Consumer {
         if (transform.hae && ld.get(object, transform.hae)) hae = ld.get(object, transform.hae)
 
         if (transform.callsign && ld.get(object, transform.callsign)) callsign = ld.get(object, transform.callsign)
-        if (transform.remarks && ld.get(object, transform.remarks)) remarks = ld.get(object, transform.remarks)
 
 
         return {
@@ -189,8 +156,7 @@ export class Consumer {
             lon: lon,
             hae: hae,
             callsign: callsign,
-            how: how,
-            remarks: remarks
+            how: how
         }
     }
 

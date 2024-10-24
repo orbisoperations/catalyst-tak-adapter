@@ -29,6 +29,11 @@ export interface Config{
         endpoint: string
         key_file: string;
         cert_file: string;
+        callsign: number
+        catalyst_lat: number
+        catalyst_lon: number
+        group: string
+        role: string
     },
     consumer?: {
         catalyst_endpoint: string;

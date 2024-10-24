@@ -1,0 +1,38 @@
+
+<event version="2.0" uid="abad185b-c95d-13de-ee68-b51a7ef10d81" type="a-f-G-U-C-I" how="m-g" time="2024-10-24T16:57:51Z" start="2024-10-24T16:57:51Z" stale="2024-10-24T17:01:51Z">
+    <point lat="38.49222802698718" lon="-121.52587636584622" hae="999999.0" ce="999999.0" le="999999.0"/>
+    <detail>
+        <contact callsign="JOJO532" endpoint="*:-1:stcp"/>
+        <__group name="Cyan" role="Team Member"/>
+        <takv device="Firefox - 131" platform="WebTAK" os="Macintosh - 10.15" version="4.10.2"/>
+        <link relation="p-p" type="a-f-G-U-C-I" uid="abad185b-c95d-13de-ee68-b51a7ef10d81"/>
+        <_flow-tags_>
+            <NodeCoT-12.6.0>2024-10-24T16:57:55.264Z</NodeCoT-12.6.0>
+        </_flow-tags_>
+    </detail>
+</event>
+
+<event version="2.0" uid="abad185b-c95d-13de-ee68-b51a7ef10d81" type="a-f-G-U-C-I" how="m-g" time="2024-10-24T16:58:50Z" start="2024-10-24T16:58:50Z" stale="2024-10-24T17:02:50Z">
+<point lat="38.491836454886545" lon="-121.52615016975788" hae="999999.0" ce="999999.0" le="999999.0"/>
+<detail>
+    <contact callsign="JOJO532" endpoint="*:-1:stcp"/>
+    <__group name="Cyan" role="Team Member"/>
+    <takv device="Firefox - 131" platform="WebTAK" os="Macintosh - 10.15" version="4.10.2"/>
+    <link relation="p-p" type="a-f-G-U-C-I" uid="abad185b-c95d-13de-ee68-b51a7ef10d81"/>
+    <_flow-tags_ TAK-Server-f6edbf55ccfa4af1b4cfa2d7f177ea67="2024-10-24T16:58:50Z">
+        <NodeCoT-12.6.0>2024-10-24T16:58:50.296Z</NodeCoT-12.6.0>
+    </_flow-tags_>
+</detail>
+</event>
+
+<event version="2.0" uid="CATALYST" type="a-f-G-U-C-I" how="m-g" time="2024-10-24T18:39:25.339Z" start="2024-10-24T18:39:25.339Z" stale="2024-10-24T18:39:25.339Z300000">
+<point lat="-64.0107" lon="-59.452" hae="999999.0" ce="999999.0" le="999999.0"/>
+<detail>
+    <contact callsign="CATALYST" endpoint="*:-1:stcp"/>
+    <__group name="Cyan" role="Team Member"/>
+    <takv device="Tak Adapter" platform="Catalyst" os="linux" version="0.0.1"/>
+    <link relation="p-p" type="a-f-G-U-C-I" uid="CATALYST"/>
+    <_flow-tags_>
+        <NodeCoT-12.6.0>2024-10-24T18:39:25.341Z</NodeCoT-12.6.0>
+    </_flow-tags_></detail>
+</event>
