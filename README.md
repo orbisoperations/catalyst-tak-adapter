@@ -338,14 +338,14 @@ Parsers are configured by the query name. In the example above, the query name i
 
 
 ##### Producer section [producer]
-
+```toml
 [producer]
 catalyst_jwks_endpoint="http://localhost:8080/jwks"
 catalyst_app_id = "thebestappid"
 local_db_path="yourdb"
 graphql_port = 8080
 graphql_host = "0.0.0.0"
-
+```
 The producer section governs how to connect to Catalyst in a way that Catalyst can read data.
 
 * `catalyst_jwks_endpoint` - The URL to the JWKS endpoint for Catalyst. This is used to verify the JWT signature in side of your data channel. This defaults to `https://gateway.catalyst.devintelops.io/.well-known/jwks.json`.
