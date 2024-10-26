@@ -5,10 +5,7 @@ import type {Static} from "@sinclair/typebox";
 import JSONCoT from "@tak-ps/node-cot/lib/types/types";
 import { Hono } from 'hono'
 import { createYoga, createSchema } from 'graphql-yoga';
-import { printSchema, lexicographicSortSchema } from 'graphql';
 import {createRemoteJWKSet, jwtVerify} from "jose"
-import {getBunServer} from "hono/dist/types/adapter/bun/server";
-import {Response} from "hono/dist/types/client/types";
 
 type CoTMsg = Static<typeof JSONCoT>
 
@@ -22,7 +19,6 @@ export class Producer {
     appId: string;
     jwks
     mapSize: number;
-    //static initDB: RootDatabase;
 
     constructor(config: Config) {
         this.config = config;
@@ -103,7 +99,6 @@ export class Producer {
     getAllCoT(): CoTMsg[] | undefined  {
         try {
             const currentTime = new Date()
-            // What's going on here this should be a method, maybe not setting up type correctly?
             const cots = this.db.getRange()
                 .filter(({ key, value }) => {
                     return new Date(value.event._attributes.stale) >= currentTime;
