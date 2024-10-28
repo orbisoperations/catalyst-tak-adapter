@@ -174,8 +174,9 @@ dist
 # Finder (MacOS) folder config
 .DS_Store
 
-key.pem
-cert.pem
+*.pem
+*.key
+*.p12
 **/config.toml
 adapter-db/
 yourdb/
@@ -183,3 +184,6 @@ yourdb/
 config.docker.toml
 config.fly.toml
 db/*/**
+
+.tak_downloads/** 
+
