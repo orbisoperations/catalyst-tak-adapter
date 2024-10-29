@@ -200,12 +200,12 @@ export class Producer {
         }
         // Get the fileshare object from the CoT
         try {
-            const fileshare = cot.event.detail.fileshare
+            const fileshare = cot.event.detail?.fileshare
             if (!fileshare) {
                 console.error(`CoT (${uid}) : no fileshare found`)
                 return
             }
-            const filename = fileshare.filename
+            const filename = fileshare._attributes.filename
             const filePath = path.join(".tak_downloads", filename)
             const content = fs.readFileSync(filePath).toString('base64')
             return {
