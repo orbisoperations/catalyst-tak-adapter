@@ -84,17 +84,13 @@ export class Producer {
                 let senderUrl: string | undefined = cot.to_geojson().properties.fileshare?.senderUrl
                 let filename: string | undefined = cot.to_geojson().properties.fileshare?.filename
     
-                console.log(cot.raw.event.detail?.fileshare?._attributes)
-                console.log(cot.raw.event)
                 if (cot.raw.event.point._attributes.hae === "NaN") {
                     console.log("HAE is NaN")
                     cot.raw.event.point._attributes.hae = "0"
-                    console.log(cot.raw.event.point._attributes.hae)
                 }
                 if (cot.raw.event.point._attributes.ce === "NaN") {
                     console.log("CE is NaN")
                     cot.raw.event.point._attributes.ce = "0"
-
                 }
                 if (cot.raw.event.point._attributes.le === "NaN") {
                     console.log("LE is NaN")
@@ -131,13 +127,12 @@ export class Producer {
         console.log('Sending Request');
         https.get(senderUrl, 
             options, (res) => {
-            console.log('statusCode:', res.statusCode);
-            console.log('headers:', res.headers);
             if (res.statusCode !== 200) {
                 console.error('...')
             }
 
             if (!fs.existsSync(this.downloadPath)) {
+                console.log("Creating download path.")
                 fs.mkdirSync(this.downloadPath);
             }
 
@@ -174,13 +169,23 @@ export class Producer {
         }
     }
 
-    // Method to retrieve all CoT from lmdb
+
+    /**
+     * Method to retrieve all CoT (Cursor on Target) messages from the local database.
+     * Filters the messages to include only those where the stale time plus 60 seconds
+     * is greater than or equal to the current time.
+     * 
+     * @returns {CoTMsg[] | undefined} An array of CoT messages or undefined if an error occurs.
+     */
     getAllCoT(): CoTMsg[] | undefined  {
         try {
             const currentTime = new Date()
             const cots = this.db.getRange()
                 .filter(({ key, value }) => {
-                    return new Date(value.event._attributes.stale) >= currentTime;
+                    let staleTime = new Date(value.event._attributes.stale)
+                    const staleTimePlus60Secs = new Date(staleTime.getTime() + 60 * 1000);
+                    return staleTimePlus60Secs >= currentTime;
+                    // return new Date(value.event._attributes.stale) >= currentTime;
                 })
                 .map(({ key, value }) => {
                     return value;
@@ -191,6 +196,7 @@ export class Producer {
             console.error("Error retrieving all CoT from local database", error)
         }
     }
+
 
     getFileShare(uid: string) {
 
