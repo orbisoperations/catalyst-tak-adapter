@@ -16,6 +16,7 @@ type CoTMsg = Static<typeof JSONCoT>
 export class Producer {
     config: Config;
     dbPath: string;
+    downloadPath: string;
     db: RootDatabase<CoTMsg, string>;
     graphqlPort: number;
     graphqlHost: string;
@@ -27,6 +28,7 @@ export class Producer {
     constructor(config: Config) {
         this.config = config;
         this.dbPath = config.producer?.local_db_path || "./db/producer";
+        this.downloadPath = config.producer?.local_download_path || ".tak_downloads";
         this.mapSize = 2 * 1024 * 1024 * 1024; // 2GB
         this.db = this.initDB()
         this.graphqlHost = config.producer?.graphql_host || "0.0.0.0";
@@ -117,8 +119,7 @@ export class Producer {
             return
         }
 
-        const dirPath = ".tak_downloads"
-        const filePath = path.join(dirPath, filename)
+        const filePath = path.join(this.downloadPath, filename)
         const {key , cert} = readKeyAndCert(this.config)
         let options = {
             key: key,
@@ -206,7 +207,7 @@ export class Producer {
                 return
             }
             const filename = fileshare._attributes.filename
-            const filePath = path.join(".tak_downloads", filename)
+            const filePath = path.join(this.downloadPath, filename)
             const content = fs.readFileSync(filePath).toString('base64')
             return {
                 uid: uid,
