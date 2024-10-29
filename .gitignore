@@ -181,5 +181,5 @@ adapter-db/
 yourdb/
 ./**/*.mdb
 config.docker.toml
-config.fly.toml
+config.fly*toml
 db/*/**
