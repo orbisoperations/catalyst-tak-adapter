@@ -391,6 +391,11 @@ export class Producer {
                     downloadFile: (_, {uid}) => {
                         return this.getFileShare(uid)
                     },
+                                        
+                    deleteCoT: (_, {uid}) => {
+                        return this.deleteCoT(uid)
+                    },
+
                     _sdl: () => typeDefs
                 }
             }
