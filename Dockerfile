@@ -10,9 +10,10 @@ COPY src/ src/
 COPY package.json .
 COPY tsconfig.json .
 COPY bun.lockb .
-COPY config.fly.toml .
+COPY config.toml .
 
 RUN chown -R bun:bun /usr/src/app
+RUN mkdir /data && chown -R bun:bun /data
 
 USER bun
 RUN ls -al src
