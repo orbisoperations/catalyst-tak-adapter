@@ -78,7 +78,15 @@ export class Consumer {
                 variables: new Object(this.config.consumer!.catalyst_query_variables)
             }),
         })
-        return  await result.json()
+        try {
+            return await result.json()
+        } catch (error) {
+            console.error("Error parsing response", error)
+            console.error("query", this.config.consumer!.catalyst_query)
+            console.error("variables", this.config.consumer!.catalyst_query_variables)
+            console.error("response", result)
+            return {data: {}}
+        }
     }
 
     async jsonToGeoChat(json: any): Promise<CoT[]> {
