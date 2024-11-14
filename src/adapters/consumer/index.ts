@@ -258,7 +258,7 @@ export class Consumer {
                 }
             }
         }
-        // console.log(cots[0].raw);
+        
         return cots
     }
 
