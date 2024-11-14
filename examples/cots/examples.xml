@@ -1,50 +1,26 @@
-const extracot = [new CoT(`
-    <event version="2.0" uid="06ffdc74-fa10-6e37-6280-057491ac7e49" type="a-f-G" how="h-g-i-g-o" time="${new Date().toISOString()}" start="${new Date().toISOString()}" stale="${new Date(Date.now() + 5 * 60 * 1000).toISOString()}">
-        <point lat="40.58094380762393" lon="-121.65387331154284" hae="999999.0" ce="999999.0" le="999999.0"/>
-        <detail>
-            <contact callsign="F.16.144558"/>
-            <takv device="Firefox - 131" platform="WebTAK" os="Macintosh - 10.15" version="4.10.2"/>
-            <archive/>
-            <usericon iconsetpath="COT_MAPPING_2525B/"/>
-            <link relation="p-p" type="a-f-G-U-C-I" uid="abad185b-c95d-13de-ee68-b51a7ef10d82"/>
+<event version="2.0" uid="06ffdc74-fa10-6e37-6280-057491ac7e49" type="a-f-G" how="h-g-i-g-o" time="${new Date().toISOString()}" start="${new Date().toISOString()}" stale="${new Date(Date.now() + 5 * 60 * 1000).toISOString()}">
+    <point lat="40.58094380762393" lon="-121.65387331154284" hae="999999.0" ce="999999.0" le="999999.0"/>
+    <detail>
+        <contact callsign="F.16.144558"/>
+        <takv device="Firefox - 131" platform="WebTAK" os="Macintosh - 10.15" version="4.10.2"/>
+        <archive/>
+        <usericon iconsetpath="COT_MAPPING_2525B/"/>
+        <link relation="p-p" type="a-f-G-U-C-I" uid="abad185b-c95d-13de-ee68-b51a7ef10d82"/>
 
-        </detail>
-    </event>
-`),
-    new CoT(`
-    <event version="2.0" uid="06ffdc74-fa10-6e37-6280-057491ac7e40" type="a-f-G" how="h-g-i-g-o" time="${new Date().toISOString()}" start="${new Date().toISOString()}" stale="${new Date(Date.now() + 5 * 60 * 1000).toISOString()}">
-        <point lat="40.78094380762393" lon="-121.85387331154284" hae="999999.0" ce="999999.0" le="999999.0"/>
-        <detail>
-            <contact callsign="F.16.144558"/>
-            <takv device="Firefox - 131" platform="WebTAK" os="Macintosh - 10.15" version="4.10.2"/>
-            <archive/>
-            <usericon iconsetpath="COT_MAPPING_2525B/"/>
-            <link relation="p-p" type="a-f-G-U-C-I" uid="abad185b-c95d-13de-ee68-b51a7ef10d83"/>
-
-        </detail>
-    </event>
-`),
-new CoT(`
-`)
-];
-
-<event version="2.0" uid="a4f460" type="a-f-G-U-C" how="h-g-i-g-o" time="2024-10-16T19:52:25.747Z" start="2024-10-16T19:52:25.747Z" stale="2024-10-16T19:57:25.747Z">
-<point lat="38.804169" lon="-76.136627" hae="1575" ce="999999.0" le="999999.0"/>
-<detail>
-    <_flow-tags_>
-        <NodeCoT-12.6.0>2024-10-16T19:52:25.747Z</NodeCoT-12.6.0>
-    </_flow-tags_>
-</detail>
+    </detail>
 </event>
 
-<event version="2.0" uid="DAMAGE__LIE__STRING" type="a-f-G-U-C" how="h-g-i-g-o" time="2024-10-23T22:15:41.272Z" start="2024-10-23T22:15:41.272Z" stale="2024-10-23T22:15:51.272Z">
+<event version="2.0" uid="ANDROID-16d62d38db9a9dff" type="a-f-G-U-C" how="m-g" time="2024-10-24T23:10:01Z" start="2024-10-24T23:10:01Z" stale="2024-10-24T23:16:16Z" access="Undefined">
+<point lat="38.491979" lon="-121.526124" hae="-39.995" ce="1.5" le="9999999.0"/>
 <detail>
-    <contact callsign="Ping 3"/>
-    <_flow-tags_>
+    <__group name="Cyan" role="Team Member"/>
+    <precisionlocation geopointsrc="GPS" altsrc="GPS"/>
+    <status battery="48"/>
 
-        <NodeCoT-12.6.0>2024-10-23T22:15:41.272Z</NodeCoT-12.6.0>
-
-    </_flow-tags_>
+    <takv device="GOOGLE PIXEL 9 PRO XL" platform="ATAK-CIV" os="34" version="5.2.0.8 (f490acb4)[playstore].1726740902-CIV"/>
+    <track speed="0.0" course="257.83960772129626"/>
+    <contact endpoint="*:-1:stcp"  callsign="TURBO"/>
+    <uid Droid="TURBO"/><_flow-tags_ TAK-Server-f6edbf55ccfa4af1b4cfa2d7f177ea67="2024-10-24T23:10:01Z">
+    <NodeCoT-12.6.0>2024-10-24T23:10:01.693Z</NodeCoT-12.6.0></_flow-tags_>
 </detail>
-<point lat="22.76081208289122" lon="120.24882050572171" hae="999999.0" ce="999999.0" le="999999.0"/>
 </event>
