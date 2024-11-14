@@ -82,10 +82,27 @@ export class Producer {
                 let senderUrl: string | undefined = cot.to_geojson().properties.fileshare?.senderUrl
                 let filename: string | undefined = cot.to_geojson().properties.fileshare?.filename
     
-                
+                console.log(cot.raw.event.detail?.fileshare?._attributes)
+                console.log(cot.raw.event)
+                if (cot.raw.event.point._attributes.hae === "NaN") {
+                    console.log("HAE is NaN")
+                    cot.raw.event.point._attributes.hae = "0"
+                    console.log(cot.raw.event.point._attributes.hae)
+                }
+                if (cot.raw.event.point._attributes.ce === "NaN") {
+                    console.log("CE is NaN")
+                    cot.raw.event.point._attributes.ce = "0"
+
+                }
+                if (cot.raw.event.point._attributes.le === "NaN") {
+                    console.log("LE is NaN")
+                    cot.raw.event.point._attributes.le = "0"
+                }
+
                 const filePath = await this.getFileFromTak(senderUrl, filename)
                 // const fileHash = await this.calculateFileHash(filePath)
             }
+            console.log(cot.raw)
             await this.db.put(uid, cot.raw)
             console.log(`CoT (${uid}) : stored`)   
 
@@ -168,6 +185,7 @@ export class Producer {
                     return value;
                 })
             return Array.from(cots)
+
         } catch (error) {
             console.error("Error retrieving all CoT from local database", error)
         }
@@ -347,7 +365,7 @@ export class Producer {
                                                 }
                                             } : undefined,
                                         fileshare: cot.event.detail?.fileshare ? {
-                                            uid: cot.event.detail?.fileshare?._attributes.uid,
+                                            uid: cot.event._attributes.uid,
                                             filename: cot.event.detail?.fileshare?._attributes.filename,
                                             senderUid: cot.event.detail?.fileshare?._attributes.senderUid,
                                             senderCallsign: cot.event.detail?.fileshare?._attributes.senderCallsign,
