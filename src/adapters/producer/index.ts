@@ -137,8 +137,8 @@ export class Producer {
                 console.error('...')
             }
 
-            if (!fs.existsSync(dirPath)) {
-                fs.mkdirSync(dirPath);
+            if (!fs.existsSync(this.downloadPath)) {
+                fs.mkdirSync(this.downloadPath);
             }
 
             let fileStream = fs.createWriteStream(filePath);
