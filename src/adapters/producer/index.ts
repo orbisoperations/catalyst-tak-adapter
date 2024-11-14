@@ -232,11 +232,13 @@ export class Producer {
             const cot = await this.db.remove(uid);
             if (!cot) {
                 console.error(`CoT (${uid}) : not found`);
-                return
+                return false;
             }
             console.log(`CoT (${uid}) : deleted`);
+            return true;
         } catch (error) {
             console.error("Error deleting CoT from local database", error);
+            return false;
         }
     }
 
@@ -338,6 +340,10 @@ export class Producer {
             downloadFile(uid: String!): File!
             _sdl: String!
         }
+        
+          type Mutation {
+            deleteCoT(uid: String!): Boolean
+        }
     `
         const schema = createSchema({
             typeDefs: typeDefs,
@@ -391,13 +397,14 @@ export class Producer {
                     downloadFile: (_, {uid}) => {
                         return this.getFileShare(uid)
                     },
-                                        
-                    deleteCoT: (_, {uid}) => {
-                        return this.deleteCoT(uid)
-                    },
 
                     _sdl: () => typeDefs
-                }
+                },
+                Mutation: {
+                    deleteCoT: async (_, { uid }) => {
+                        return await this.deleteCoT(uid);
+                    },
+                },
             }
         })
 
