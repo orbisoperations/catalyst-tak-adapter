@@ -87,7 +87,7 @@ if (consumer) {
             return async () => {
                 const jsonResults = await consumer.doGraphqlQuery()
                 const cots = consumer.jsonToCots(jsonResults)
-                const msgCots = consumer.jsonToGeoChat(jsonResults)
+                const msgCots = await consumer.jsonToGeoChat(jsonResults)
                 console.log("chats:", msgCots)
                 consumer.publishCot([...cots, ...msgCots], tak)
             }
