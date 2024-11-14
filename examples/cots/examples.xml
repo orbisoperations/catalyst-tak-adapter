@@ -24,3 +24,15 @@
     <NodeCoT-12.6.0>2024-10-24T23:10:01.693Z</NodeCoT-12.6.0></_flow-tags_>
 </detail>
 </event>
+
+
+<event version="2.0" uid="71b28985-415f-4cda-a494-04451ff259ad" type="b-f-t-r" how="h-e" time="2024-10-26T16:07:26Z" start="2024-10-26T16:07:26Z" stale="2024-10-26T16:07:36Z">
+    <point lat="-58.90375561" lon="-123.15202048" hae="NaN" ce="NaN" le="NaN"/>
+    <detail>
+        <fileshare filename="20241027_000624.jpg.zip" senderUrl="https://149.248.208.79:8443/Marti/sync/content?hash=f75249ecf45dbde4dfb7c0644efccad371ff33e583cfbc81e26f044a13df060a" sizeInBytes="3256275" sha256="f75249ecf45dbde4dfb7c0644efccad371ff33e583cfbc81e26f044a13df060a" senderUid="ANDROID-352330081248960" senderCallsign="SCORE" name="20241027_000624.jpg"/>
+        <ackrequest uid="f5743c9e-e2bc-48a0-9ed1-6906368aab72" ackrequested="true" tag="20241027_000624.jpg"/>
+        <_flow-tags_ TAK-Server-3abc9530735f4a3093430a1334481205="2024-10-26T16:07:26Z">
+            <NodeCoT-12.6.0>2024-10-26T16:07:26.830Z</NodeCoT-12.6.0>
+        </_flow-tags_>
+    </detail>
+</event>

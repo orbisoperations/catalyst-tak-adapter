@@ -6,6 +6,10 @@ import JSONCoT from "@tak-ps/node-cot/lib/types/types";
 import { Hono } from 'hono'
 import { createYoga, createSchema } from 'graphql-yoga';
 import {createRemoteJWKSet, jwtVerify} from "jose"
+import path from "node:path";
+import fs from "fs";
+import { readKeyAndCert } from '../../tak';
+import https from "node:https";
 
 type CoTMsg = Static<typeof JSONCoT>
 
@@ -71,13 +75,70 @@ export class Producer {
      */
     async putCoT(cot: CoT) {
         try {
+            // handle fileshare
             const uid = cot.uid();
+            if (cot.to_geojson().properties.fileshare) {
+                console.log("CoT: ", cot.to_geojson().properties.fileshare)
+                let senderUrl: string | undefined = cot.to_geojson().properties.fileshare?.senderUrl
+                let filename: string | undefined = cot.to_geojson().properties.fileshare?.filename
+    
+                
+                const filePath = await this.getFileFromTak(senderUrl, filename)
+                // const fileHash = await this.calculateFileHash(filePath)
+            }
             await this.db.put(uid, cot.raw)
             console.log(`CoT (${uid}) : stored`)   
 
         } catch (error) {
             console.error("Error storing CoT in local database", error)
         }
+    }
+
+    async getFileFromTak(senderUrl: string, filename: string) {
+        if (!senderUrl) {
+            console.error("No senderUrl found")
+            return
+        }
+
+        const dirPath = ".tak_downloads"
+        const filePath = path.join(dirPath, filename)
+        const {key , cert} = readKeyAndCert(this.config)
+        let options = {
+            key: key,
+            cert: cert,
+            rejectUnauthorized: false,
+        };
+
+        options = {...options, ...readKeyAndCert(this.config)}
+        console.log('Sending Request');
+        https.get(senderUrl, 
+            options, (res) => {
+            console.log('statusCode:', res.statusCode);
+            console.log('headers:', res.headers);
+            if (res.statusCode !== 200) {
+                console.error('...')
+            }
+
+            if (!fs.existsSync(dirPath)) {
+                fs.mkdirSync(dirPath);
+            }
+
+            let fileStream = fs.createWriteStream(filePath);
+            res.pipe(fileStream);
+            fileStream.on('finish', () => {
+                console.log('Download Completed.');
+                fileStream.close();
+            });
+    
+            fileStream.on('error', (error) => {
+                fs.unlink(filePath, () => {})
+                console.error("File stream issue: ", error)
+            });
+
+            return filePath
+          }).on('error', (error) => {
+           console.error(error);
+          });
     }
     
     // Method to retrieve CoT from lmdb
@@ -112,6 +173,34 @@ export class Producer {
         }
     }
 
+    getFileShare(uid: string) {
+
+        const cot = this.getCoT(uid);
+        if (!cot) {
+            console.error(`CoT (${uid}) : not found`)
+            return
+        }
+        // Get the fileshare object from the CoT
+        try {
+            const fileshare = cot.event.detail.fileshare
+            if (!fileshare) {
+                console.error(`CoT (${uid}) : no fileshare found`)
+                return
+            }
+            const filename = fileshare.filename
+            const filePath = path.join(".tak_downloads", filename)
+            const content = fs.readFileSync(filePath).toString('base64')
+            return {
+                uid: uid,
+                filename: filename,
+                content: content
+            }
+        } catch (error) {
+            console.error("Error getting fileshare from CoT", error)
+        }
+
+    }
+
     // Method to delete Cot from lmdb
     async deleteCoT(uid: string) {
         try {
@@ -125,6 +214,7 @@ export class Producer {
             console.error("Error deleting CoT from local database", error);
         }
     }
+
 
     // Function to check for stale CoT and remove db entries
    /* handleStaleCoT() {
@@ -190,6 +280,15 @@ export class Producer {
             callsign: String!
             chat: CoTChat
             remarks: CoTRemarks
+            fileshare: CoTFileShare
+        }
+
+        type CoTFileShare {
+            uid: String!
+            filename: String!
+            senderUid: String!
+            senderCallsign: String!
+            name: String!
         }
         
         type CoT {
@@ -201,10 +300,17 @@ export class Producer {
             detail: CoTDetail!
         }
         
+        type File {
+            uid: String!
+            filename: String!
+            content: String!
+        }
+
         type Query {
             hello: String!
             cots: [CoT]!
             cotWitinRadius(lat: Float!, lon: Float!, radius: Float!): [CoT]!
+            downloadFile(uid: String!): File!
             _sdl: String!
         }
     `
@@ -240,6 +346,13 @@ export class Producer {
                                                     id: cot.event.detail?.__chat.chatgrp.id ?? ""
                                                 }
                                             } : undefined,
+                                        fileshare: cot.event.detail?.fileshare ? {
+                                            uid: cot.event.detail?.fileshare?._attributes.uid,
+                                            filename: cot.event.detail?.fileshare?._attributes.filename,
+                                            senderUid: cot.event.detail?.fileshare?._attributes.senderUid,
+                                            senderCallsign: cot.event.detail?.fileshare?._attributes.senderCallsign,
+                                            name: cot.event.detail?.fileshare?._attributes.name,
+                                        } : undefined,
                                         remarks: cot.event.detail?.remarks ? {
                                             source: cot.event.detail?.remarks._attributes?.source,
                                             to: cot.event.detail?.remarks._attributes?.to,
@@ -249,6 +362,9 @@ export class Producer {
                                     }
                                 }
                             })
+                    },
+                    downloadFile: (_, {uid}) => {
+                        return this.getFileShare(uid)
                     },
                     _sdl: () => typeDefs
                 }
@@ -263,6 +379,7 @@ export class Producer {
         const app = new Hono()
 
         app.use("/graphql", async (c) => {
+            
             if(!this.config.dev) {
                 const token = c.req.header("Authorization") ? c.req.header("Authorization")!.split(" ")[1] : ""
                 let valid = false
