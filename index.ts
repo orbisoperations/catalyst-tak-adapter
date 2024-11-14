@@ -34,6 +34,7 @@ while (config === undefined) {
 }
 
 
+
 let consumer: Consumer | undefined = undefined
 let producer: Producer | undefined = undefined
 if (config.consumer) {
@@ -86,8 +87,9 @@ if (consumer) {
             return async () => {
                 const jsonResults = await consumer.doGraphqlQuery()
                 const cots = consumer.jsonToCots(jsonResults)
-                consumer.publishCot(cots, tak)
-               // cots.forEach(cot => console.log("Published CoT: ", cot.to_xml()))
+                const msgCots = consumer.jsonToGeoChat(jsonResults)
+                console.log("chats:", msgCots)
+                consumer.publishCot([...cots, ...msgCots], tak)
             }
         }
         , config.consumer?.catalyst_query_poll_interval_ms || 1000)
