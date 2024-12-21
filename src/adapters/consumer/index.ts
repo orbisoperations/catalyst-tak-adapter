@@ -90,6 +90,11 @@ export class Consumer {
     }
 
     async jsonToGeoChat(json: any): Promise<CoT[]> {
+        if (!json || !json.data) {
+            console.warn("Invalid JSON: ", json)
+            return []
+        }
+
         const data = json.data
         const senderUID = this.config?.tak.callsign?? "CATALYST"
         const chatParsers = this.config.consumer?.chat
@@ -206,64 +211,78 @@ export class Consumer {
     }
 
     jsonToCots(json: any) {
+        if (!json || !json.data) {
+            console.error("Invalid JSON: ", json)
+            return []
+        }
+
         const data = json.data
-        // specific airplane
+        
+    
         const parsers = this.config.consumer?.parser
+
         if (parsers === undefined) {
             console.warn("no transforms have been found and unable to convert data to CoT")
             return []
         }
 
+
         let cots: CoT[] = []
         for (const [dataName, parser] of Object.entries(parsers)) {
+            if (!(dataName in data)) {
+                console.warn(`Key '${dataName}' not found in data. Available keys: ${Object.keys(data)}`);
+                continue;
+            }
+
             if (data[dataName] === undefined) {
-                console.warn("key not found in data", dataName)
-            } else {
-                const dataToTransform = data[dataName] as any[]
-                for (const dataElement of dataToTransform) {
+                console.warn(`Key '${dataName}' exists but has undefined value`);
+                continue;
+            }
 
-                    let extractedVals = this.extractCoTValues(dataName, dataElement, parser.transform)
-                    if (extractedVals === undefined) {
-                        console.error("error extracting values for", dataName)
-                        continue
-                    }
+            const dataToTransform = data[dataName] as any[]
+            for (const dataElement of dataToTransform) {
 
-                    if (parser.overwrite) extractedVals = this.overWriteCoTValues(extractedVals, parser.overwrite!)
-                    const cotValues = this.fillDefaultCoTValues(extractedVals)
-                    const formedCot = new CoT({
-                        event: {
-                            _attributes: {
-                                version: "2.0",
-                                uid: cotValues.uid,
-                                type: cotValues.type,
-                                how: cotValues.how,
-                                time: new Date().toISOString(),
-                                start: new Date().toISOString(),
-                                stale: new Date(Date.now() + this.poll_interval_ms).toISOString()
-                            },
-                            detail: {
-                                contact: {
-                                    _attributes: {
-                                        callsign: cotValues.callsign,
-                                    }
-                                },
-                                remarks: {
-                                    _text: cotValues.remarks
-                                }
-                            },
-                            point: {
-                                _attributes: {
-                                    lat: cotValues.lat,
-                                    lon: cotValues.lon,
-                                    hae: cotValues.hae,
-                                    ce: "999999.0",
-                                    le: "999999.0"
-                                }
-                            },
-                        }
-                    })
-                    cots.push(formedCot)
+                let extractedVals = this.extractCoTValues(dataName, dataElement, parser.transform)
+                if (extractedVals === undefined) {
+                    console.error("error extracting values for", dataName)
+                    continue
                 }
+
+                if (parser.overwrite) extractedVals = this.overWriteCoTValues(extractedVals, parser.overwrite!)
+                const cotValues = this.fillDefaultCoTValues(extractedVals)
+                const formedCot = new CoT({
+                    event: {
+                        _attributes: {
+                            version: "2.0",
+                            uid: cotValues.uid,
+                            type: cotValues.type,
+                            how: cotValues.how,
+                            time: new Date().toISOString(),
+                            start: new Date().toISOString(),
+                            stale: new Date(Date.now() + this.poll_interval_ms).toISOString()
+                        },
+                        detail: {
+                            contact: {
+                                _attributes: {
+                                    callsign: cotValues.callsign,
+                                }
+                            },
+                            remarks: {
+                                _text: cotValues.remarks
+                            }
+                        },
+                        point: {
+                            _attributes: {
+                                lat: cotValues.lat,
+                                lon: cotValues.lon,
+                                hae: cotValues.hae,
+                                ce: "999999.0",
+                                le: "999999.0"
+                            }
+                        },
+                    }
+                })
+                cots.push(formedCot)
             }
         }
         
