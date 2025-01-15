@@ -8,7 +8,7 @@ You must provide a valid configuration file to start the adapter.
 
 The adapter will check if the environment variable `CONFIG_PATH` is set. If it is, it will use that path as the configuration file. If it is not, it will look for `config.toml` in the root of the project.
 
-An example configuration file is provided in the root of the project: `config.example.toml` 
+An example configuration file is provided in the root of the project: `config.toml.example` 
 
 
 ## Configuration Sections

@@ -174,16 +174,19 @@ dist
 # Finder (MacOS) folder config
 .DS_Store
 
+# Certificates
 *.pem
 *.key
 *.p12
-**/config.toml
+
+# Data
 adapter-db/
 yourdb/
 ./**/*.mdb
-config.docker.toml
-config.fly.toml.bk
 db/*/**
+.tak_downloads/**
 
-.tak_downloads/** 
-config.fly.toml*
+# Configuration
+config.toml
+config.*.toml
+!config.toml.example
