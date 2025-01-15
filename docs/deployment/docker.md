@@ -70,7 +70,7 @@ networks:
     name: tak-server_tak
     external: true
 ```
-
+**Note:** This configuration example assumes an existing network `tak-network'
 
 ## See Also
 
