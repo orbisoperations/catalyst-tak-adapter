@@ -3,13 +3,13 @@
 This guide covers deploying the Catalyst TAK Adapter using Docker.
 
 ## Overview
-Docker images can be built on any platform that supports Docker (Linux, macOS, Windows). Once built, these images can be run on any other platform with Docker installed, ensuring that the application behaves the same way everywhere.
+Docker images can be built on any platform that supports Docker (Linux, macOS, Windows). Once built, these images can be run on any containerization platform, ensuring that the application behaves the same way everywhere.
 
 ## Prerequisites
 
 - Docker or Docker Compose installed
-- SSL certificates (key.pem and cert.pem)
-- Configuration file (config.toml)
+- TAK User certificates (key.pem and cert.pem)
+- Configuration file (config.toml) - see [example](config.toml.example)
 
 ## Building the Container
 
