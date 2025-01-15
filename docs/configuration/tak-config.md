@@ -23,7 +23,7 @@ endpoint="ssl://127.0.0.1:8089"
 | `connection_id` | Yes | Unique identifier for the TAK server connection | None |
 | `endpoint` | Yes | TAK server endpoint URL (format: ssl://hostname:port) | None |
 
-## SSL Certificate Requirements
+## TAK User Credentials Requirements
 
 - Both key and certificate files must be in PEM format
 - The key file must be decrypted before use

@@ -10,8 +10,8 @@ Fly.io is a cloud platform that allows you to deploy and scale your applications
 
 - Fly.io account
 - Fly CLI installed
-- SSL certificates
-- Configuration file
+- TAK User key and certificate (key.pem and cert.pem)
+- Configuration file (config.toml) - see [example](../../config.example.toml)
 
 ## Essential Files
 

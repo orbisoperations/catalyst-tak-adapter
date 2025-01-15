@@ -9,8 +9,8 @@ Docker images can be built on any platform that supports Docker (Linux, macOS, W
 
 ### System Requirements
 - Docker or Docker Compose installed
-- TAK User certificates (key.pem and cert.pem)
-- Configuration file (config.toml) - see [example](config.toml.example)
+- TAK User key and certificate (key.pem and cert.pem)
+- Configuration file (config.toml) - see [example](config.example.toml)
 
 ### Configuration Requirements
 Before deploying, ensure your `config.toml` has the minimum required parameters for the environment you are deploying to.
@@ -50,8 +50,8 @@ docker-compose up -d
 | Local Path | Container Path | Purpose |
 |------------|---------------|----------|
 | config.toml | /usr/src/app/config.toml | Configuration file |
-| key.pem | /usr/src/app/key.pem | SSL key |
-| cert.pem | /usr/src/app/cert.pem | SSL certificate |
+| key.pem | /usr/src/app/key.pem | Private key for the TAK user |
+| cert.pem | /usr/src/app/cert.pem | Certificate for the TAK user |
 | ./db | /usr/src/app/db | Persistent storage |
 
 ## Docker Compose Configuration
