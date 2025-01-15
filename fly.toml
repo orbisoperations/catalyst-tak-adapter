@@ -14,7 +14,7 @@ source = "adapter_data_ord"
 destination = "/data"
 
 [env]
-CONFIG_PATH = "config.fly.toml"
+CONFIG_PATH = "config.toml"
 
 [http_service]
   internal_port = 8080
