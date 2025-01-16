@@ -80,3 +80,6 @@ graphql_host="0.0.0.0"
 local_db_path="/var/lib/tak-adapter/db"
 ```
 
+## See Also
+- [Consumer Configuration](./consumer-config.md)
+- [Parser Configuration](./parser-config.md)
