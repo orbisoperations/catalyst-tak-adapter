@@ -6,7 +6,7 @@ services:
     volumes:
       - "./key.pem:/usr/src/app/key.pem"
       - "./cert.pem:/usr/src/app/cert.pem"
-      - "./config.docker.toml:/usr/src/app/config.toml"
+      - "./config.toml:/usr/src/app/config.toml"
     networks:
       tak-network:
     restart: unless-stopped
