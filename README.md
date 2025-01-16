@@ -252,7 +252,6 @@ graphql_host = "0.0.0.0"
 ### Toml Sections
 
 
-
 #### TAK section - [tak]
 
 ```toml

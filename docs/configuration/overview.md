@@ -37,8 +37,8 @@ Default values only apply when a config file exists
 When running in Docker, the following paths are used:
 
 - Configuration: `/usr/src/app/config.toml`
-- SSL Key: `/usr/src/app/key.pem`
-- SSL Certificate: `/usr/src/app/cert.pem`
+- Key: `/usr/src/app/key.pem`
+- Certificate: `/usr/src/app/cert.pem`
 - Database: `/usr/src/app/db`
 
 ## See Also
