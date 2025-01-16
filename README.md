@@ -1,34 +1,36 @@
 # catalyst-tak-adapter
 
-The Catalyst Tak Adapter is a service design to bridge TAK environments to a rich data integration fabric.
+The Catalyst Tak Adapter is a service designed to bridge TAK environments to a rich data integration fabric.
 
 # Table of Contents
-- [Minimal Production Setup](#minimal-production-setup)
-  - [Check out Repo and Run the Build Script](#check-out-repo-and-run-the-build-script)
-  - [Minimal TOML Configuration File](#minimal-toml-configuration-file)
-  - [TAK Key and Certs](#tak-key-and-certs)
-  - [Adapter Storage](#adapter-storage)
-  - [Deployments](#deployments)
-    - [Running the Container](#running-the-container)
-    - [Running in Fly.io](#running-in-flyio)
-- [Development Steps](#development-steps)
+- [catalyst-tak-adapter](#catalyst-tak-adapter)
+- [Table of Contents](#table-of-contents)
+  - [Minimal Production Setup](#minimal-production-setup)
+    - [Check out Repo and Run the Build Script](#check-out-repo-and-run-the-build-script)
+    - [Minimal TOML  Configuration File](#minimal-toml--configuration-file)
+    - [TAK Key and Certs](#tak-key-and-certs)
+    - [Adapter Storage](#adapter-storage)
+    - [Deployments](#deployments)
+      - [Running the Container](#running-the-container)
+      - [Running in Fly.io](#running-in-flyio)
+  - [Development Steps](#development-steps)
     - [Check out Repo and Bootrstrap TAK Dev Server](#check-out-repo-and-bootrstrap-tak-dev-server)
     - [Setting Up Your Browser](#setting-up-your-browser)
     - [Check out this Repo](#check-out-this-repo)
-        - [Copy over User Key/Cert](#copy-over-user-keycert)
-        - [Decrypt the User Key](#decrypt-the-user-key)
-        - [Run the Adapter](#run-the-adapter)
+      - [Copy over User Key/Cert](#copy-over-user-keycert)
+      - [Decrypt the User Key](#decrypt-the-user-key)
+      - [Run the Adapter](#run-the-adapter)
 - [Adapter Runthrough](#adapter-runthrough)
-    - [Consumer](#consumer)
-    - [Producer](#producer)
-    - [TOML Config](#toml-config)
-        - [Example TOML](#example-toml)
-        - [Default Config Values](#default-config-values)
-        - [TOML Sections](#toml-sections)
-            - [TAK section - \[tak\]](#tak-section---tak)
-            - [Consumer section - \[consumer\]](#consumer-section---consumer)
-                - [Consumer Parsers - \[consumer.parser.*.transform\|overwrite\]](#consumer-parsers---consumerparsertransformoverwrite)
-            - [Producer section \[producer\]](#producer-section-producer)
+  - [Consumer](#consumer)
+  - [Producer](#producer)
+  - [TOML Config](#toml-config)
+    - [Default Config Values](#default-config-values)
+    - [Toml Sections](#toml-sections)
+      - [TAK section - \[tak\]](#tak-section---tak)
+      - [Consumer section - \[consumer\]](#consumer-section---consumer)
+        - [Consumer Parsers - \[consumer.parser.\*.transform|overwrite\]](#consumer-parsers---consumerparsertransformoverwrite)
+        - [Producer section \[producer\]](#producer-section-producer)
+  - [Documentation](#documentation)
 
 ## Minimal Production Setup
 
@@ -353,6 +355,15 @@ The producer section governs how to connect to Catalyst in a way that Catalyst c
 * `local_db_path` - The path to the local database. This defaults to `./db`.
 * `graphql_port` - The port to run the GraphQL server on. This defaults to `8080`.
 * `graphql_host` - The host to run the GraphQL server on. This defaults to 0.0.0.0`
+
+## Documentation
+
+Additional Documentation is available in the [docs](./docs) directory:
+
+- [Configuration Guide](./docs/configuration/overview.md)
+- [Deployment Guide](./docs/deployment/overview.md)
+
+
 
 
 
