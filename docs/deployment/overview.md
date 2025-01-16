@@ -1,11 +1,11 @@
 # Deployment Guide
 
-This guide covers deployment options and best practices for the Catalyst TAK Adapter.
+This guide covers deployment options for the Catalyst TAK Adapter.
 
 ## Deployment Options
 
 - [Docker Deployment](./docker.md)
-- [Fly.io Deployment](./fly-io.md)
+- [Fly.io Deployment](./fly-io.md) TODO
 
 ## Docker Deployment
 
