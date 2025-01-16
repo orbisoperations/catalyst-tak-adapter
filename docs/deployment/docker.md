@@ -10,7 +10,7 @@ Docker images can be built on any platform that supports Docker (Linux, macOS, W
 ### System Requirements
 - Docker or Docker Compose installed
 - TAK User key and certificate (key.pem and cert.pem)
-- Configuration file (config.toml) - see [example](config.example.toml)
+- Configuration file (config.toml) - see [example](config.toml.example)
 
 ### Configuration Requirements
 Before deploying, ensure your `config.toml` has the minimum required parameters for the environment you are deploying to.

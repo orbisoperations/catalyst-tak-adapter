@@ -18,7 +18,7 @@ This guide covers setting up your development environment for the Catalyst TAK A
 catalyst-tak-adapter/
 ├── Dockerfile            # Docker configuration
 ├── README.md             # Project overview and instructions
-├── config.example.toml   # Example configuration file
+├── config.toml.example   # Example configuration file
 ├── docker-compose.yml    # Docker Compose configuration
 ├── examples/             # Example configurations and queries
 ├── fly.toml              # Fly.io configuration
