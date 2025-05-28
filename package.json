@@ -8,7 +8,8 @@
     "test": "bun test",
     "testw": "bun test --watch",
     "docker-compose": "docker-compose up --build",
-    "build": "docker build -t catalyst-tak-adapter ."
+    "build": "docker build -t catalyst-tak-adapter .",
+    "prepare": "husky"
   },
   "keywords": [],
   "author": "",
@@ -35,9 +36,17 @@
     "eslint-plugin-react": "^7.37.1",
     "globals": "^15.11.0",
     "husky": "^9.1.7",
+    "lint-staged": "^16.0.0",
+    "prettier": "^3.5.3",
     "typescript-eslint": "^8.9.0"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
+  },
+  "lint-staged": {
+    "**/*.{js,ts,tsx}": [
+      "eslint --fix"
+    ],
+    "**/*": "prettier --write --ignore-unknown"
   }
 }
