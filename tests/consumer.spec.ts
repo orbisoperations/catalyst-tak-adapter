@@ -151,4 +151,11 @@ describe("Consumer", () => {
       remarks: undefined,
     });
   });
+
+  it("handles json with missing data gracefully", () => {
+    const json = { no: "data" };
+
+    const result = consumer.jsonToCots(json);
+    expect(result).toEqual([]);
+  });
 });
