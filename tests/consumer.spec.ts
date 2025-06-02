@@ -91,6 +91,7 @@ describe("Consumer", () => {
   });
 
   it("returns undefined if lon value is missing", () => {
+    // Transform won't work on this because these fields don't match
     const object = {
       uidPath: "123",
       typePath: "a",
@@ -106,6 +107,7 @@ describe("Consumer", () => {
   });
 
   it("handles null remarks field gracefully", () => {
+    // Transform won't work on this because these fields don't match
     const object = {
       uidPath: "123",
       typePath: "a",
@@ -130,6 +132,7 @@ describe("Consumer", () => {
   });
 
   it("handles missing remarks field gracefully", () => {
+    // Transform won't work on this because these fields don't match
     const object = {
       uidPath: "123",
       typePath: "a",
