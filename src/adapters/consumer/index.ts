@@ -87,13 +87,14 @@ export class Consumer {
       console.error("query", this.config.consumer!.catalyst_query);
       console.error(
         "variables",
-        this.config.consumer!.catalyst_query_variables
+        this.config.consumer!.catalyst_query_variables,
       );
       console.error("response", result);
       return { data: {} };
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async jsonToGeoChat(json: any): Promise<CoT[]> {
     if (!json || !json.data) {
       console.warn("Invalid JSON: ", json);
@@ -105,16 +106,17 @@ export class Consumer {
     const chatParsers = this.config.consumer?.chat;
     if (chatParsers === undefined) {
       console.warn(
-        "no chat transforms have been found and unable to convert data to CoT"
+        "no chat transforms have been found and unable to convert data to CoT",
       );
       return [];
     }
     console.log("chat parsers", chatParsers);
-    let cots: CoT[] = [];
+    const cots: CoT[] = [];
     for (const [dataName, chatParser] of Object.entries(chatParsers)) {
       if (data[dataName] === undefined) {
         console.error("key not found to generate chats in data", dataName);
       } else {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const dataToTransform = data[dataName] as any[];
         console.log("dataToTransform", dataToTransform);
         for (const dataElement of dataToTransform) {
@@ -125,12 +127,13 @@ export class Consumer {
           const messageId = ld.get(
             dataElement,
             chatParser.message_id,
-            undefined
+            undefined,
           );
 
           // build map of message variables
-          let msgVars: [string, string][] = [];
+          const msgVars: [string, string][] = [];
           for (const [key, value] of Object.entries(chatParser.message_vars)) {
+            // eslint-disable-next-line @typescript-eslint/no-unused-expressions
             ld.get(dataElement, value)
               ? msgVars.push([key, ld.get(dataElement, value)])
               : console.error("value not found for", key);
@@ -166,7 +169,7 @@ export class Consumer {
                 time: new Date().toISOString(),
                 start: new Date().toISOString(),
                 stale: new Date(
-                  Date.now() + 7 * 24 * 60 * 60 * 1000
+                  Date.now() + 7 * 24 * 60 * 60 * 1000,
                 ).toISOString(),
                 access: "Undefined",
               },
@@ -223,6 +226,7 @@ export class Consumer {
     return cots;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   jsonToCots(json: any) {
     if (!json || !json.data) {
       console.error("Invalid JSON: ", json);
@@ -240,18 +244,18 @@ export class Consumer {
 
     if (parsers === undefined) {
       console.warn(
-        "no transforms have been found and unable to convert data to CoT"
+        "no transforms have been found and unable to convert data to CoT",
       );
       return [];
     }
 
-    let cots: CoT[] = [];
+    const cots: CoT[] = [];
     for (const [dataName, parser] of Object.entries(parsers)) {
       if (!(dataName in data)) {
         console.warn(
           `Key '${dataName}' not found in data. Available keys: ${Object.keys(
-            data
-          )}`
+            data,
+          )}`,
         );
         continue;
       }
@@ -261,12 +265,13 @@ export class Consumer {
         continue;
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const dataToTransform = data[dataName] as any[];
       for (const dataElement of dataToTransform) {
         let extractedVals = this.extractCoTValues(
           dataName,
           dataElement,
-          parser.transform
+          parser.transform,
         );
         if (extractedVals === undefined) {
           console.error("error extracting values for", dataName);
@@ -276,8 +281,15 @@ export class Consumer {
         if (parser.overwrite)
           extractedVals = this.overWriteCoTValues(
             extractedVals,
-            parser.overwrite!
+            parser.overwrite!,
           );
+
+        const RTSP_URL =
+          this.config.tak.catalyst_rtsp_url ?? "192.168.1.102:7428";
+        const RTSP_PORT = this.config.tak.catalyst_rtsp_port ?? "7428";
+        const RTSP_STREAM_PATH =
+          this.config.tak.catalyst_rtsp_stream_path ?? "/stream";
+
         const cotValues = this.fillDefaultCoTValues(extractedVals);
         const formedCot = new CoT({
           event: {
@@ -298,6 +310,27 @@ export class Consumer {
               },
               remarks: {
                 _text: cotValues.remarks,
+              },
+              __video: {
+                _attributes: {
+                  uid: cotValues.callsign,
+                  url: "rtsp://" + RTSP_URL + RTSP_STREAM_PATH,
+                },
+                ConnectionEntry: {
+                  _attributes: {
+                    networkTimeout: "5000",
+                    uid: cotValues.callsign,
+                    path: RTSP_STREAM_PATH,
+                    protocol: "rtsp",
+                    bufferTime: "-1",
+                    address: RTSP_URL,
+                    port: RTSP_PORT,
+                    roverPort: "-1",
+                    rtspReliable: "1",
+                    ignoreEmbbededKLV: "false",
+                    alias: "live/" + cotValues.callsign,
+                  },
+                },
               },
             },
             point: {
@@ -322,8 +355,9 @@ export class Consumer {
 
   extractCoTValues(
     key: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     object: any,
-    transform: CoTTransform
+    transform: CoTTransform,
   ): CoTValues | undefined {
     // let uid, type, lat, lon, hae, how, callsign, remarks: string | undefined
     let uid, type, lat, lon, hae, how, callsign, remarks: string | undefined;
