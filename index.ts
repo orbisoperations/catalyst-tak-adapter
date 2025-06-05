@@ -35,7 +35,7 @@ while (config === undefined) {
 
 let consumer: Consumer | undefined = undefined;
 let producer: Producer | undefined = undefined;
-if (config.consumer) {
+if (config.consumer?.catalyst_token) {
   consumer = new Consumer(config);
 }
 

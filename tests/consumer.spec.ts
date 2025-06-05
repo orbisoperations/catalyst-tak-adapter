@@ -6,8 +6,14 @@ import { expect, describe, beforeEach, it } from "bun:test";
 
 describe("Consumer", () => {
   let consumer: Consumer;
+  // missing tak and producer fields
+  // @ts-expect-error: This is a mock config, missing fields are intentional
   const mockConfig: Config = {
+    dev: true,
     consumer: {
+      catalyst_query_variables: {},
+      local_db_path: ".tak_downloads",
+      chat: {},
       catalyst_endpoint: "https://gateway.catalyst.devintelops.io/graphql",
       catalyst_query: "{ query }",
       catalyst_token: "test-token",
@@ -22,7 +28,7 @@ describe("Consumer", () => {
             hae: "point.hae",
             how: "how",
             callsign: "detail.callsign",
-            // remarks: 'details.remarks.text'
+            remarks: "details.remarks.text",
           },
         },
       },
@@ -35,43 +41,47 @@ describe("Consumer", () => {
 
   it("extracts CoT values correctly", () => {
     const object = {
+      uid: "test-callsign",
       version: "2.0",
-      uid: "Twinkie",
       type: "a-f-F",
       how: "h-g-i-g-o",
       point: {
-        lat: 23.558102936561184,
-        lon: 119.57770374849753,
+        lat: 0,
+        lon: 119,
         hae: 0,
         ce: 0,
         le: 0,
       },
       detail: {
-        callsign: "Twinkie",
+        callsign: "test-callsign",
         movementCount: 27,
         distanceToOrigin: 0.9121570088802997,
-        remarks: [
-          {
-            text: "test-remarks",
-          },
-        ],
+        remarks: {
+          text: "test-remarks",
+        },
       },
     };
 
-    const transform: CoTTransform =
-      mockConfig.consumer!.parser!.dataName.transform;
-    console.log(transform);
+    const transform: CoTTransform = {
+      uid: "uid",
+      type: "type",
+      lat: "point.lat",
+      lon: "point.lon",
+      hae: "point.hae",
+      how: "how",
+      callsign: "detail.callsign",
+      remarks: "detail.remarks.text",
+    };
     const result = consumer.extractCoTValues("dataName", object, transform);
-    console.log(result);
     expect(result).toEqual({
-      uid: "123",
-      type: "a",
-      lat: "1.0",
-      lon: "2.0",
-      hae: "3.0",
+      uid: "test-callsign",
+      lat: "0",
+      lon: "119",
+      hae: "0",
       how: "h-g-i-g-o",
       callsign: "test-callsign",
-      // remarks: 'test-remarks'
+      remarks: "test-remarks",
+      type: "a-f-F",
     });
   });
 
@@ -84,8 +94,16 @@ describe("Consumer", () => {
       callsignPath: "test-callsign",
       remarksPath: "test-remarks",
     };
-    const transform: CoTTransform =
-      mockConfig.consumer!.parser!.dataName.transform;
+    // Transform won't work on this because these fields don't match
+    // @ts-expect-error: This is intentional, missing lat should return undefined
+    const transform: CoTTransform = {
+      uid: "uidPath",
+      type: "typePath",
+      lon: "lonPath",
+      hae: "haePath",
+      callsign: "callsignPath",
+      remarks: "remarksPath",
+    };
     const result = consumer.extractCoTValues("dataName", object, transform);
     expect(result).toBeUndefined();
   });
@@ -117,8 +135,16 @@ describe("Consumer", () => {
       callsignPath: "test-callsign",
       remarksPath: null,
     };
-    const transform: CoTTransform =
-      mockConfig.consumer!.parser!.dataName.transform;
+    const transform: CoTTransform = {
+      uid: "uidPath",
+      type: "typePath",
+      lat: "latPath",
+      lon: "lonPath",
+      hae: "haePath",
+      how: "howPath",
+      callsign: "callsignPath",
+      remarks: "remarksPath",
+    };
     const result = consumer.extractCoTValues("dataName", object, transform);
     expect(result).toEqual({
       uid: "123",
@@ -141,8 +167,14 @@ describe("Consumer", () => {
       haePath: "3.0",
       callsignPath: "test-callsign",
     };
-    const transform: CoTTransform =
-      mockConfig.consumer!.parser!.dataName.transform;
+    const transform: CoTTransform = {
+      uid: "uidPath",
+      type: "typePath",
+      lat: "latPath",
+      lon: "lonPath",
+      hae: "haePath",
+      callsign: "callsignPath",
+    };
     const result = consumer.extractCoTValues("dataName", object, transform);
     expect(result).toEqual({
       uid: "123",
@@ -157,7 +189,6 @@ describe("Consumer", () => {
 
   it("handles json with missing data gracefully", () => {
     const json = { no: "data" };
-
     const result = consumer.jsonToCots(json);
     expect(result).toEqual([]);
   });
