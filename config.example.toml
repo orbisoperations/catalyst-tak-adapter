@@ -1,0 +1,60 @@
+# This is a sample configuration file for the Catalyst TAK Adapter.
+# It is used to configure the adapter to connect to the Catalyst platform and
+# to the TAK server.
+#
+# The configuration is stored in a TOML file, which is a simple format that is
+# easy to read and write.
+#
+# The configuration is split into sections, each section containing a set of
+# key-value pairs.
+dev = true
+
+[tak]
+key_file = "key.pem"
+cert_file = "cert.pem"
+connection_id = "TestConnection"
+endpoint = "ssl://127.0.0.1:8089"
+callsign = "custom-callsign"
+group = "custom-group"
+role = "custom-role"
+rtsp_server = "127.0.0.1"
+rtsp_port = "XXXX"
+
+[consumer]
+enabled = true
+chat = {}  # use {} as null is not valid
+catalyst_endpoint="https://gateway.catalyst.intelops.io/graphql"
+catalyst_token="catalyst-token"
+catalyst_query= """
+query {
+  aircraftWithinDistance(lat: 38.937620, lon: -77.180400, dist: 50) {
+    hex
+    flight
+    lat
+    lon
+    alt_geom
+  }
+}
+"""
+
+catalyst_query_poll_interval_ms = 10000
+
+[consumer.parser.aircraftWithinDistance.transform]
+enabled = true
+uid = "uid"
+lat = "point.lat"
+lon = "point.lon"
+how = "how"
+type = "type"
+callsign = "detail.callsign"
+
+[consumer.parser.aircraftWithinDistance.overwrite]
+type = "a-f-A"
+
+[producer]
+enabled = false
+catalyst_jwks_url = "https://gateway.catalyst.intelops.io/.well-known/jwks.json"
+catalyst_app_id = "this-app-id"
+local_db_path = ".db/producer"
+graphql_port = 8080
+graphql_host = "127.0.0.1"

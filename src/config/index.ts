@@ -1,79 +1,8 @@
 import fs from "fs";
-import toml from "toml";
+import toml from "smol-toml";
 import { merge } from "lodash";
-
-export interface CoTTransform {
-  uid?: string;
-  type: string;
-  lat: string;
-  lon: string;
-  hae?: string;
-  how?: string;
-  callsign?: string;
-  remarks?: string;
-}
-
-export interface CoTOverwrite {
-  uid?: string;
-  type?: string;
-  lat?: string;
-  lon?: string;
-  hae?: string;
-  how?: string;
-  callsign?: string;
-  remarks?: string;
-}
-
-export interface Config {
-  dev: boolean;
-  tak: {
-    connection_id: string; // SECRET
-    endpoint: string; // SECRET
-    key_file: string; // SECRET
-    cert_file: string; // SECRET
-    callsign: number;
-    catalyst_lat: number;
-    catalyst_lon: number;
-    group: string;
-    role: string;
-    catalyst_rtsp_url: string;
-    catalyst_rtsp_port: string;
-    catalyst_rtsp_stream_path: string;
-  };
-  consumer?: {
-    catalyst_endpoint: string;
-    catalyst_token: string; // SECRET
-    catalyst_query: string; // SECRET
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    catalyst_query_variables: Record<string, any>;
-    catalyst_query_poll_interval_ms: number;
-    local_db_path: string;
-    parser: {
-      [key: string]: {
-        transform: CoTTransform;
-        overwrite?: CoTOverwrite;
-      };
-    };
-    chat: {
-      [key: string]: {
-        recipient: string;
-        message_id: string;
-        message_vars: {
-          [key: string]: string;
-        };
-        message_template: string;
-      };
-    };
-  };
-  producer?: {
-    catalyst_jwks_endpoint: string;
-    catalyst_app_id: string; // SECRET
-    local_db_path: string;
-    local_download_path: string;
-    graphql_port: number;
-    graphql_host: string;
-  };
-}
+import z from "zod";
+import { generateMock } from "@anatine/zod-mock";
 
 // Config items we'd like to keep secret
 export interface SecretConfig {
@@ -114,6 +43,88 @@ function getSecrets(): SecretConfig {
   };
 }
 
+// Zod schemas for Config validation
+const CoTTransformSchema = z.object({
+  uid: z.string().optional().describe("The UID of the CoT event"),
+  type: z.string(),
+  lat: z.string(),
+  lon: z.string(),
+  hae: z.string().optional(),
+  how: z.string().optional(),
+  callsign: z.string().optional(),
+  remarks: z.string().optional(),
+});
+
+const CoTOverwriteSchema = z.object({
+  uid: z.string().optional(),
+  type: z.string().optional(),
+  lat: z.string().optional(),
+  lon: z.string().optional(),
+  hae: z.string().optional(),
+  how: z.string().optional(),
+  callsign: z.string().optional(),
+  remarks: z.string().optional(),
+});
+
+const ConfigSchema = z.object({
+  dev: z.boolean(),
+  tak: z.object({
+    connection_id: z.string(),
+    endpoint: z.string(),
+    key_file: z.string(),
+    cert_file: z.string(),
+    callsign: z.string(),
+    catalyst_lat: z.number().optional(),
+    catalyst_lon: z.number().optional(),
+    group: z.string(),
+    role: z.string(),
+    rtsp_server: z.string(),
+    rtsp_port: z.string(),
+  }),
+  consumer: z
+    .object({
+      enabled: z.boolean(),
+      catalyst_endpoint: z.string(),
+      catalyst_token: z.string(),
+      catalyst_query: z.string(),
+      catalyst_query_variables: z.record(z.any()),
+      catalyst_query_poll_interval_ms: z.number(),
+      local_db_path: z.string().default("./db/consumer"),
+      parser: z.record(
+        z.object({
+          transform: CoTTransformSchema,
+          overwrite: CoTOverwriteSchema.optional(),
+        }),
+      ),
+      chat: z
+        .record(
+          z.object({
+            recipient: z.string(),
+            message_id: z.string(),
+            message_vars: z.record(z.string()),
+            message_template: z.string(),
+          }),
+        )
+        .nullable(),
+    })
+    .optional(),
+  producer: z
+    .object({
+      enabled: z.boolean(),
+      catalyst_jwks_url: z.string(),
+      catalyst_app_id: z.string(),
+      local_db_path: z.string().default("./db/producer"),
+      local_download_path: z.string().default(".tak_downloads"),
+      graphql_port: z.number(),
+      graphql_host: z.string(),
+    })
+    .optional(),
+});
+
+export type Config = z.infer<typeof ConfigSchema>;
+export type CoTTransform = z.infer<typeof CoTTransformSchema>;
+export type CoTOverwrite = z.infer<typeof CoTOverwriteSchema>;
+
 export function getConfig() {
   const configPath = process.env.CONFIG_PATH || "config.toml";
   const tomlConfig = toml.parse(fs.readFileSync(configPath).toString());
@@ -123,5 +134,35 @@ export function getConfig() {
   const config = merge({}, tomlConfig, secrets);
 
   console.log("Loaded configuration (secrets redacted)");
-  return config as Config;
+
+  const parsedConfig = ConfigSchema.safeParse(config);
+  if (!parsedConfig.success) {
+    console.error("Invalid configuration:", parsedConfig.error);
+    process.exit(1);
+  }
+
+  return parsedConfig.data;
 }
+
+function initTemplateConfig() {
+  // get mock config
+  const mockConfig = generateMock(ConfigSchema, { seed: 1 });
+
+  const stringifiedConfig = toml.stringify(mockConfig);
+  const fileContents = `
+# This is a template configuration file for the Catalyst TAK Adapter.
+# It is used to configure the adapter to connect to the Catalyst platform and
+# to the TAK server.
+#
+# The configuration is stored in a TOML file, which is a simple format that is
+# easy to read and write.
+#
+# The configuration is split into sections, each section containing a set of
+# key-value pairs.
+${stringifiedConfig}`;
+
+  // save config to file
+  fs.writeFileSync("config.template.toml", fileContents);
+}
+
+initTemplateConfig();

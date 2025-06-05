@@ -261,7 +261,7 @@ export class Producer {
                     }
                 }
             } catch (error) {
-                
+
             }
         }, 1 * 60 * 1000)
     }    */
@@ -276,19 +276,19 @@ export class Producer {
             lon: Float!
             hae: Float!
         }
-        
+
         type CoTRemarks {
             source: String
             to: String
             time: String
             text: String
         }
-        
+
         type CoTGroupChat {
             uids: [String]!
             id: String!
         }
-        
+
         type CoTChat {
             parent: String!
             groupOwner: String!
@@ -298,7 +298,7 @@ export class Producer {
             senderCallsign: String!
             chatGroup: CoTGroupChat
         }
-        
+
         type CoTDetail {
             callsign: String!
             chat: CoTChat
@@ -313,7 +313,7 @@ export class Producer {
             senderCallsign: String!
             name: String!
         }
-        
+
         type CoT {
             version: String!
             uid: String!
@@ -322,7 +322,7 @@ export class Producer {
             point: CoTPoint!
             detail: CoTDetail!
         }
-        
+
         type File {
             uid: String!
             filename: String!
@@ -336,7 +336,7 @@ export class Producer {
             downloadFile(uid: String!): File!
             _sdl: String!
         }
-        
+
           type Mutation {
             deleteCoT(uid: String!): Boolean
         }
