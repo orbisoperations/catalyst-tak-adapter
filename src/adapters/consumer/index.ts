@@ -119,7 +119,7 @@ export class Consumer {
     }
     console.log("chat parsers", chatParsers);
     const cots: CoT[] = [];
-    for (const [dataName, chatParser] of Object.entries(chatParsers)) {
+    for (const [dataName, chatParser] of Object.entries(chatParsers ?? {})) {
       if (data[dataName] === undefined) {
         console.error("key not found to generate chats in data", dataName);
       } else {
@@ -291,11 +291,9 @@ export class Consumer {
             parser.overwrite!,
           );
 
-        const RTSP_URL =
-          this.config.tak.catalyst_rtsp_url ?? "192.168.1.102:7428";
-        const RTSP_PORT = this.config.tak.catalyst_rtsp_port ?? "7428";
-        const RTSP_STREAM_PATH =
-          this.config.tak.catalyst_rtsp_stream_path ?? "/stream";
+        const RTSP_URL = this.config.tak.rtsp_server ?? "192.168.1.102";
+        const RTSP_PORT = this.config.tak.rtsp_port ?? "7428";
+        const RTSP_STREAM_PATH = "/stream";
 
         const cotValues = this.fillDefaultCoTValues(extractedVals);
         const formedCot = new CoT({
