@@ -1,4 +1,4 @@
-# fly.toml app configuration file generated for catalyst-tak-adapter on 2024-10-17T15:51:49-07:00
+# fly.toml app configuration file generated for catalyst-tak-adapter on 2025-06-05T20:16:39+08:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
@@ -9,12 +9,13 @@ primary_region = 'ord'
 [build]
   dockerfile = 'Dockerfile'
 
-[mounts]
-source = "adapter_data_ord"
-destination = "/data"
-
 [env]
-CONFIG_PATH = "config.toml"
+  CONFIG_PATH = 'config.toml'
+  NODE_ENV = 'production'
+
+[[mounts]]
+  source = 'adapter_data_ord'
+  destination = '/data'
 
 [http_service]
   internal_port = 8080

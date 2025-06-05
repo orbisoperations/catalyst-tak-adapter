@@ -5,11 +5,12 @@ import type { Static } from "@sinclair/typebox";
 import JSONCoT from "@tak-ps/node-cot/lib/types/types";
 import { Hono } from "hono";
 import { createYoga, createSchema } from "graphql-yoga";
-import { createRemoteJWKSet, jwtVerify } from "jose";
+import { createRemoteJWKSet } from "jose";
 import path from "node:path";
 import fs from "fs";
 import { readKeyAndCert } from "../../tak";
 import https from "node:https";
+import { verifyJwtWithRemoteJwks } from "../../auth/catalyst-jwt";
 
 type CoTMsg = Static<typeof JSONCoT>;
 
@@ -35,7 +36,7 @@ export class Producer {
     this.graphqlHost = config.producer?.graphql_host || "0.0.0.0";
     this.graphqlPort = config.producer?.graphql_port || 8080;
     this.jwksEndpoint =
-      config.producer?.catalyst_jwks_endpoint ||
+      config.producer?.catalyst_jwks_url ||
       "https://gateway.catalyst.devintelops.io/.well-known/jwks.json";
     if (!config.producer?.catalyst_app_id) {
       throw new Error("Catalyst App ID not found");
@@ -426,33 +427,59 @@ export class Producer {
 
     const app = new Hono();
 
-    app.use("/graphql", async (c) => {
-      if (!this.config.dev) {
-        const token = c.req.header("Authorization")
-          ? c.req.header("Authorization")!.split(" ")[1]
-          : "";
-        let valid = false;
-        try {
-          const { payload } = await jwtVerify(token, this.jwks);
-
-          console.log(payload);
-
-          valid =
-            payload.claims != undefined &&
-            (payload.claims as string[]).includes(this.appId);
-          if (!valid) {
-            console.error("unable to validate jwt");
-          }
-        } catch (e) {
-          console.error("error validating jwt: ", e);
-          valid = false;
-        }
-        if (!valid) {
-          return c.text("Unauthorized", 401);
-        }
-      } else {
-        console.error("THIS SERVER IS RUNNING IN DEV MODE ADN IS NOT SECURE");
+    // middleware to check if the request is a valid jwt
+    app.use(async (c, next) => {
+      if (this.config.dev) {
+        // don't check for jwt in dev mode
+        console.error("THIS SERVER IS RUNNING IN DEV MODE AND IS NOT SECURE");
+        console.log("dev mode, skipping jwt check");
+        return next();
       }
+
+      const header = c.req.header("Authorization");
+      const splitedValue = header?.split(" ");
+      const token: string | undefined = splitedValue?.[1];
+
+      if (!token) {
+        console.error(
+          "Unauthorized request: No token found in Authorization header",
+        );
+        return c.json(
+          { message: "Catalyst token is required", code: 400 },
+          400,
+        );
+      }
+
+      const validationResult = await verifyJwtWithRemoteJwks(
+        token,
+        this.jwksEndpoint,
+        this.appId,
+        this.jwksEndpoint,
+      );
+
+      if (!validationResult.verified) {
+        console.error(
+          "error verifying jwt: ",
+          JSON.stringify(validationResult),
+        );
+
+        if (
+          validationResult.errorCode === "JWT_VALIDATION_FAILED" ||
+          validationResult.errorCode === "UNEXPECTED_JWT_VALIDATION_ERROR"
+        ) {
+          console.error(
+            "Internal JOSE Error validating jwt. Masking error to client.",
+          );
+          return c.json({ message: "Invalid JWT", code: 401 }, 401);
+        }
+
+        return c.json({ message: validationResult.message, code: 401 }, 401);
+      }
+
+      return next();
+    });
+
+    app.use("/graphql", async (c) => {
       return yoga.handle(c.req.raw);
     });
 

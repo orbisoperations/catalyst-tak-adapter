@@ -4,6 +4,12 @@ import TAK, { CoT } from "@tak-ps/node-tak";
 
 export function readKeyAndCert(config: Config) {
   // Read key and cert from file system
+  if (config.tak.raw_key_and_cert) {
+    return {
+      key: config.tak.key_file,
+      cert: config.tak.cert_file,
+    };
+  }
   return {
     key: fs.readFileSync(config.tak.key_file).toString(),
     cert: fs.readFileSync(config.tak.cert_file).toString(),

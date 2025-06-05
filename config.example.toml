@@ -10,6 +10,8 @@
 dev = true
 
 [tak]
+# used to indicate if the key and cert are raw strings instead of file paths
+raw_key_and_cert = false
 key_file = "key.pem"
 cert_file = "cert.pem"
 connection_id = "TestConnection"
@@ -22,7 +24,6 @@ rtsp_port = "XXXX"
 
 [consumer]
 enabled = true
-chat = {}  # use {} as null is not valid
 catalyst_endpoint="https://gateway.catalyst.intelops.io/graphql"
 catalyst_token="catalyst-token"
 catalyst_query= """
@@ -50,6 +51,15 @@ callsign = "detail.callsign"
 
 [consumer.parser.aircraftWithinDistance.overwrite]
 type = "a-f-A"
+
+[consumer.chat]
+[consumer.chat.chatparser1]
+recipient = "uberrime"
+message_id = "uberrime"
+message_template = "uberrime"
+
+[consumer.chat.chatparser1.message_vars]
+var1 = "value"
 
 [producer]
 enabled = false
