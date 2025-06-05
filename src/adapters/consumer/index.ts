@@ -22,6 +22,13 @@ interface CoTValues {
   remarks?: string;
 }
 
+function toStr(
+  val: string | number | boolean | undefined | null,
+): string | undefined {
+  if (val === undefined || val === null) return undefined;
+  return String(val);
+}
+
 export class Consumer {
   config: Config;
   poll_interval_ms: number;
@@ -361,42 +368,49 @@ export class Consumer {
   ): CoTValues | undefined {
     // let uid, type, lat, lon, hae, how, callsign, remarks: string | undefined
     let uid, type, lat, lon, hae, how, callsign, remarks: string | undefined;
-    if (transform.uid && ld.get(object, transform.uid))
+    if (transform.uid && ld.get(object, transform.uid) !== undefined)
       uid = ld.get(object, transform.uid);
-    if (transform.type && ld.get(object, transform.type))
+    if (transform.type && ld.get(object, transform.type) !== undefined)
       type = ld.get(object, transform.type);
-    if (transform.how && ld.get(object, transform.how))
+    if (transform.how && ld.get(object, transform.how) !== undefined)
       how = ld.get(object, transform.how);
 
-    if (transform.lat && ld.get(object, transform.lat))
+    if (transform.lat && ld.get(object, transform.lat) !== undefined)
       lat = ld.get(object, transform.lat);
     else {
       console.error(`lat value not found for ${key}:${uid}`);
       return undefined;
     }
-    if (transform.lon && ld.get(object, transform.lon))
+    if (transform.lon && ld.get(object, transform.lon) !== undefined)
       lon = ld.get(object, transform.lon);
     else {
       console.error(`lon value not found for ${key}:${uid}`);
       return undefined;
     }
-    if (transform.hae && ld.get(object, transform.hae))
+    if (transform.hae && ld.get(object, transform.hae) !== undefined) {
       hae = ld.get(object, transform.hae);
+    }
 
-    if (transform.callsign && ld.get(object, transform.callsign))
+    if (
+      transform.callsign &&
+      ld.get(object, transform.callsign) !== undefined
+    ) {
       callsign = ld.get(object, transform.callsign);
+    }
 
-    if (transform.remarks && ld.get(object, transform.remarks))
+    if (transform.remarks && ld.get(object, transform.remarks) !== undefined) {
       remarks = ld.get(object, transform.remarks);
+    }
+
     return {
-      uid: uid,
-      type: type,
-      lat: lat,
-      lon: lon,
-      hae: hae,
-      callsign: callsign,
-      how: how,
-      remarks: remarks,
+      uid: toStr(uid),
+      type: toStr(type),
+      lat: toStr(lat),
+      lon: toStr(lon),
+      hae: toStr(hae),
+      callsign: toStr(callsign),
+      how: toStr(how),
+      remarks: toStr(remarks),
     };
   }
 
