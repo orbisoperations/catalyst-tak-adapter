@@ -42,7 +42,7 @@ You can use the following commands (via `bun run <command>` or `npm run <command
    >
    > - You can generate a template config file with:
    >   ```bash
-   >   bun run src/config/index.ts
+   >   bun run config:template
    >   # This will create config.template.toml in the project root
    >   ```
    > - An example config is provided as `config.example.toml`.
@@ -50,11 +50,7 @@ You can use the following commands (via `bun run <command>` or `npm run <command
 
 3. Run the container:
    ```bash
-   docker run tak-adapter \
-     -v /path/to/config.toml:/usr/src/app/config.toml \
-     -v /path/to/key.pem:/usr/src/app/key.pem \
-     -v /path/to/cert.pem:/usr/src/app/cert.pem \
-     -v /path/to/db:/usr/src/app/db
+   bun run docker-compose
    ```
 
 ### Configuration & Secrets
@@ -70,32 +66,6 @@ You can use the following commands (via `bun run <command>` or `npm run <command
     - `FLY_SECRET_CONSUMER_CATALYST_QUERY`
     - `FLY_SECRET_PRODUCER_CATALYST_APP_ID`
 - See [Configuration Guide](./docs/configuration/overview.md) for all options, defaults, and environment variables.
-
-#### Example config snippet
-
-```toml
-dev = true
-
-[tak]
-connection_id = "..."
-endpoint = "..."
-key_file = "key.pem"
-cert_file = "cert.pem"
-# ...
-
-[consumer]
-enabled = true
-catalyst_endpoint = "..."
-catalyst_token = "..."
-catalyst_query = "..."
-# ...
-
-[producer]
-enabled = true
-catalyst_jwks_url = "..."
-catalyst_app_id = "..."
-# ...
-```
 
 ### Development Setup
 
@@ -130,6 +100,17 @@ catalyst_app_id = "..."
    ```bash
    bun run index.ts
    ```
+
+## Deployment
+
+### Fly.io Deployment
+
+**Prerequisites:**
+
+- Fly.io account and CLI installed
+- Project configured for Fly.io deployment
+
+You can deploy the Catalyst TAK Adapter using Docker or Fly.io. See the [Deployment Guide](./docs/deployment/overview.md) for full details and advanced options.
 
 ## Documentation
 

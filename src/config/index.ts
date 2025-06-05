@@ -6,17 +6,19 @@ import { generateMock } from "@anatine/zod-mock";
 
 // Config items we'd like to keep secret
 export interface SecretConfig {
-  tak?: {
+  dev: boolean;
+  tak: {
+    raw_key_and_cert: boolean;
     key_file?: string;
     cert_file?: string;
     endpoint?: string;
     connection_id?: string;
   };
-  consumer?: {
+  consumer: {
     catalyst_token?: string;
     catalyst_query?: string;
   };
-  producer?: {
+  producer: {
     catalyst_app_id?: string;
   };
 }
@@ -24,7 +26,12 @@ export interface SecretConfig {
 // Helper to get secrets from environment variables
 function getSecrets(): SecretConfig {
   return {
+    dev: process.env.NODE_ENV === "development",
     tak: {
+      // use boolean to determine if the key and cert are raw strings
+      raw_key_and_cert: process.env.RAW_KEY_AND_CERT === "true",
+      // if raw_key_and_cert is true, use the key and cert from the environment
+      // this is used for fly.io secrets
       key_file: process.env.FLY_SECRET_TAK_KEY_FILE ?? undefined,
       cert_file: process.env.FLY_SECRET_TAK_CERT_FILE ?? undefined,
       endpoint: process.env.FLY_SECRET_TAK_ENDPOINT ?? undefined,
@@ -67,8 +74,9 @@ const CoTOverwriteSchema = z.object({
 });
 
 const ConfigSchema = z.object({
-  dev: z.boolean(),
+  dev: z.boolean().default(false),
   tak: z.object({
+    raw_key_and_cert: z.boolean().default(false),
     connection_id: z.string(),
     endpoint: z.string(),
     key_file: z.string(),
@@ -125,23 +133,38 @@ export type Config = z.infer<typeof ConfigSchema>;
 export type CoTTransform = z.infer<typeof CoTTransformSchema>;
 export type CoTOverwrite = z.infer<typeof CoTOverwriteSchema>;
 
-export function getConfig() {
+export function getConfig(): Config {
   const configPath = process.env.CONFIG_PATH || "config.toml";
   const tomlConfig = toml.parse(fs.readFileSync(configPath).toString());
   const secrets = getSecrets();
 
   // Merge secrets with TOML config, with secrets taking precedence
-  const config = merge({}, tomlConfig, secrets);
+  const mergedConfig = merge({}, tomlConfig, secrets);
 
-  console.log("Loaded configuration (secrets redacted)");
-
-  const parsedConfig = ConfigSchema.safeParse(config);
+  const parsedConfig = ConfigSchema.safeParse(mergedConfig);
   if (!parsedConfig.success) {
     console.error("Invalid configuration:", parsedConfig.error);
     process.exit(1);
   }
 
-  return parsedConfig.data;
+  const validatedConfig: Config = parsedConfig.data;
+
+  if (validatedConfig.consumer?.enabled) {
+    if (!validatedConfig.consumer?.catalyst_query) {
+      // if the query is empty, maybe because of the secrets.catalyst_query being set empty
+      // so we need to set the query to the query in the toml config
+      validatedConfig.consumer.catalyst_query =
+        // @ts-expect-error-ignore: if the consumer is enabled, the catalyst_query is required
+        tomlConfig.consumer.catalyst_query as string;
+    }
+  }
+
+  if (process.env.NODE_ENV !== "development") {
+    console.log("[CONFIG] NODE_ENV is not development, setting dev to false");
+    validatedConfig.dev = false;
+    validatedConfig.tak.raw_key_and_cert = true;
+  }
+  return validatedConfig;
 }
 
 function initTemplateConfig() {

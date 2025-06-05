@@ -36,11 +36,19 @@ while (config === undefined) {
 let consumer: Consumer | undefined = undefined;
 let producer: Producer | undefined = undefined;
 if (config.consumer?.catalyst_token) {
-  consumer = new Consumer(config);
+  try {
+    consumer = new Consumer(config);
+  } catch (e) {
+    console.error("Error instantiating consumer", e);
+  }
 }
 
 if (config.producer && config.producer.catalyst_app_id) {
-  producer = new Producer(config);
+  try {
+    producer = new Producer(config);
+  } catch (e) {
+    console.error("Error instantiating producer", e);
+  }
 }
 
 /*
