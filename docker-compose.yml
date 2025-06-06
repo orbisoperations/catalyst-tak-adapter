@@ -1,12 +1,14 @@
 services:
   adapter:
+    ports:
+      - "8080:8080"
     build:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - "./key.pem:/usr/src/app/key.pem"
-      - "./cert.pem:/usr/src/app/cert.pem"
-      - "./config.toml:/usr/src/app/config.toml"
+      - "./key.pem:/app/key.pem"
+      - "./cert.pem:/app/cert.pem"
+      - "./config.toml:/app/config.toml"
     networks:
       tak-network:
     restart: unless-stopped

@@ -42,13 +42,20 @@ export class Consumer {
     if (!this.config.consumer) {
       throw new Error("Consumer config not found");
     }
-
-    if (
-      !this.config.consumer.catalyst_endpoint ||
-      !this.config.consumer.catalyst_query ||
-      !this.config.consumer.catalyst_token
-    ) {
-      throw new Error("Catalyst endpoint, query, or token not found");
+    const missingEnvs = [];
+    if (!this.config.consumer.catalyst_endpoint) {
+      missingEnvs.push("Catalyst endpoint");
+    }
+    if (!this.config.consumer.catalyst_query) {
+      missingEnvs.push("Catalyst query");
+    }
+    if (!this.config.consumer.catalyst_token) {
+      missingEnvs.push("Catalyst token");
+    }
+    if (missingEnvs.length > 0) {
+      throw new Error(
+        `Missing required environment variables: ${missingEnvs.join(", ")}`,
+      );
     }
 
     this.catalyst_endpoint =
