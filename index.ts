@@ -39,7 +39,7 @@ if (config.consumer) {
   consumer = new Consumer(config);
 }
 
-if (config.producer) {
+if (config.producer && config.producer.catalyst_app_id) {
   producer = new Producer(config);
 }
 
@@ -64,38 +64,87 @@ takClient.start({
   },
 });
 
+function generateCallsignHeartbeatCoT({
+  callsign = "CATALYST",
+  type = "a-f-G-U-C-I",
+  how = "m-g",
+  lat = -64.0107,
+  lon = -59.452,
+  group = "Cyan",
+  role = "Team Member",
+}: {
+  callsign?: string | number;
+  type?: string;
+  how?: string;
+  lat?: number;
+  lon?: number;
+  group?: string;
+  role?: string;
+}): CoT {
+  const now = new Date();
+  const stale = new Date(now.getTime() + 5 * 60 * 1000);
+  const RTSP_URL = "192.168.1.102:7428";
+  const RTSP_PORT = "7428";
+  const RTSP_STREAM_PATH = "/stream";
+  return new CoT(
+    `<event version="2.0" uid="${callsign}" type="${type}" how="${how}" time="${now.toISOString()}" start="${now.toISOString()}" stale="${stale.toISOString()}">
+            <point lat="${lat}" lon="${lon}" hae="999999.0" ce="999999.0" le="999999.0"/>
+            <detail>
+                <__video uid="${callsign}" url="rtsp://${RTSP_URL}/stream" >
+                    <ConnectionEntry networkTimeout="5000" uid="${callsign}" path="${RTSP_STREAM_PATH}"
+                        protocol="rtsp" bufferTime="-1" address="${RTSP_URL}" port="${RTSP_PORT}"
+                        roverPort="-1" rtspReliable="1" ignoreEmbbededKLV="false" alias="live/${callsign}" />
+                </__video>
+                <contact callsign="${callsign}" endpoint="*:-1:stcp"/>
+                <__group name="${group}" role="${role}"/>
+                <takv device="Tak Adapter" platform="Catalyst" os="linux" version="0.0.1"/>
+                <link relation="p-p" type="a-f-G-U-C-I" uid="${callsign}"/>
+                <_flow-tags_>
+                    <NodeCoT-12.6.0>${now.toISOString()}</NodeCoT-12.6.0>
+                </_flow-tags_>
+            </detail>
+        </event>`,
+  );
+}
+
 takClient.setInterval(
   "callsign",
   (tak: TAK) => {
     return async () => {
-      const cot =
-        new CoT(`<event version="2.0" uid="${config?.tak.callsign ?? "CATALYST"}" type="a-f-G-U-C-I" how="m-g" time="${new Date(Date.now()).toISOString()}" start="${new Date(Date.now()).toISOString()}" stale="${new Date(Date.now() + 5 * 60 * 1000).toISOString()}">
-                        <point lat="${config?.tak.catalyst_lat ?? -64.0107}" lon="${config?.tak.catalyst_lon ?? -59.452}" hae="999999.0" ce="999999.0" le="999999.0"/>
-                        <detail>
-                            <contact callsign="${config?.tak.callsign ?? "CATALYST"}" endpoint="*:-1:stcp"/>
-                            <__group name="${config?.tak.group ?? "Cyan"}" role="${config?.tak.role ?? "Team Member"}"/>
-                            <takv device="Tak Adapter" platform="Catalyst" os="linux" version="0.0.1"/>
-                            <link relation="p-p" type="a-f-G-U-C-I" uid="${config?.tak.callsign ?? "CATALYST"}"/>
-                            <_flow-tags_>
-                                <NodeCoT-12.6.0>2024-10-24T16:57:55.264Z</NodeCoT-12.6.0>
-                            </_flow-tags_>
-                        </detail>
-                    </event>`);
-      console.log("SENDING CATALYST CALLSIGN", cot.to_xml());
-
-      tak.write([cot]);
+      const cot = generateCallsignHeartbeatCoT({
+        callsign: config?.tak.callsign ?? "CATALYST",
+        type: "a-f-G-U-C-I",
+        how: "m-g",
+        lat: config?.tak.catalyst_lat ?? -64.0107,
+        lon: config?.tak.catalyst_lon ?? -59.452,
+        group: config?.tak.group ?? "Cyan",
+        role: config?.tak.role ?? "Team Member",
+      });
+      console.log("SENDING LOCAL CALLSIGN", cot.to_xml());
+      try {
+        tak.write([cot]);
+      } catch (e) {
+        console.error("Error sending CoT", e);
+      }
     };
   },
   10 * 1000,
 );
 
 if (consumer) {
+  console.log(
+    "setting interval for consumer",
+    config.consumer?.catalyst_query_poll_interval_ms,
+  );
   takClient.setInterval(
     "consumer",
     (tak: TAK) => {
       return async () => {
+        console.log("doing graphql query");
         const jsonResults = await consumer.doGraphqlQuery();
+        console.log("jsonResults", jsonResults);
         const cots = consumer.jsonToCots(jsonResults);
+        console.log("cots", cots[0], cots[0].to_xml(), cots[0].uid());
         const msgCots = await consumer.jsonToGeoChat(jsonResults);
         consumer.publishCot([...cots, ...msgCots], tak);
       };

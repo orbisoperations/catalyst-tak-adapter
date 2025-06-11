@@ -36,6 +36,9 @@ export interface Config {
     catalyst_lon: number;
     group: string;
     role: string;
+    catalyst_rtsp_url: string;
+    catalyst_rtsp_port: string;
+    catalyst_rtsp_stream_path: string;
   };
   consumer?: {
     catalyst_endpoint: string;
