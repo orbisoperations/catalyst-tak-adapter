@@ -10,7 +10,9 @@ describe("Producer", () => {
     const mockConfig: Config = {
       dev: true,
       producer: {
-        catalyst_jwks_endpoint: "https://catalyst.devintelops.io/jwks",
+        enabled: true,
+        catalyst_jwks_url:
+          "https://catalyst.devintelops.io/.well-known/jwks.json",
         catalyst_app_id: "test-app-id",
         local_db_path: ".tak_downloads",
         local_download_path: ".tak_downloads",

@@ -11,6 +11,7 @@ describe("Consumer", () => {
   const mockConfig: Config = {
     dev: true,
     consumer: {
+      enabled: true,
       catalyst_query_variables: {},
       local_db_path: ".tak_downloads",
       chat: {},
