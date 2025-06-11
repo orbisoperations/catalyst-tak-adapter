@@ -1,5 +1,26 @@
 # Based on https://raw.githubusercontent.com/github/gitignore/main/Node.gitignore
 
+# Adapter ignore files
+
+## Certificates
+*.pem
+*.key
+*.p12
+
+## Data
+adapter-db/
+yourdb/
+./**/*.mdb
+db/*/**
+.tak_downloads/**
+.db/**
+
+## Configuration
+config.toml
+config.*.toml
+config.template.toml
+!config.example.toml
+
 # Logs
 
 logs
@@ -173,20 +194,3 @@ dist
 
 # Finder (MacOS) folder config
 .DS_Store
-
-# Certificates
-*.pem
-*.key
-*.p12
-
-# Data
-adapter-db/
-yourdb/
-./**/*.mdb
-db/*/**
-.tak_downloads/**
-
-# Configuration
-config.toml
-config.*.toml
-!config.toml.example

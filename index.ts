@@ -140,13 +140,17 @@ if (consumer) {
     "consumer",
     (tak: TAK) => {
       return async () => {
-        console.log("doing graphql query");
-        const jsonResults = await consumer.doGraphqlQuery();
-        console.log("jsonResults", jsonResults);
-        const cots = consumer.jsonToCots(jsonResults);
-        console.log("cots", cots[0], cots[0].to_xml(), cots[0].uid());
-        const msgCots = await consumer.jsonToGeoChat(jsonResults);
-        consumer.publishCot([...cots, ...msgCots], tak);
+        console.log("LOG: Doing graphql query from consumer");
+        try {
+          const jsonResults = await consumer.doGraphqlQuery();
+          console.log("jsonResults", jsonResults);
+          const cots = consumer.jsonToCots(jsonResults);
+          console.log("cots", cots[0], cots[0].to_xml(), cots[0].uid());
+          const msgCots = await consumer.jsonToGeoChat(jsonResults);
+          consumer.publishCot([...cots, ...msgCots], tak);
+        } catch (e) {
+          console.error("Error doing graphql query from consumer", e);
+        }
       };
     },
     config.consumer?.catalyst_query_poll_interval_ms || 1000,
