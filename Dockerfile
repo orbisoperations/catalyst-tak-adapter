@@ -19,6 +19,12 @@ COPY src/ src/
 # copy config file
 COPY config.toml .
 
+ARG TAK_CERT_FILE=tak-admin.cert.pem
+ARG TAK_KEY_FILE=tak-admin.key.pem
+
+COPY ${TAK_CERT_FILE} ./${TAK_CERT_FILE}
+COPY ${TAK_KEY_FILE} ./${TAK_KEY_FILE}
+
 RUN chown -R bun:bun /app
 USER bun
 

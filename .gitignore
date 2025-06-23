@@ -17,8 +17,6 @@ db/*/**
 
 ## Configuration
 config.toml
-config.*.toml
-config.template.toml
 !config.example.toml
 
 # Logs
