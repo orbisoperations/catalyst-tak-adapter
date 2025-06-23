@@ -7,19 +7,16 @@ import { generateMock } from "@anatine/zod-mock";
 // Config items we'd like to keep secret
 export interface SecretConfig {
   dev: boolean;
-  tak: {
-    raw_key_and_cert: boolean;
-    key_file?: string;
-    cert_file?: string;
-    endpoint?: string;
-    connection_id?: string;
-  };
   consumer: {
+    enabled: boolean;
     catalyst_token?: string;
     catalyst_query?: string;
+    catalyst_query_poll_interval_ms?: number;
   };
   producer: {
+    enabled: boolean;
     catalyst_app_id?: string;
+    catalyst_jwt_issuer?: string;
   };
 }
 
@@ -27,25 +24,25 @@ export interface SecretConfig {
 function getSecrets(): SecretConfig {
   return {
     dev: process.env.NODE_ENV === "development",
-    tak: {
-      // use boolean to determine if the key and cert are raw strings
-      raw_key_and_cert: process.env.RAW_KEY_AND_CERT === "true",
-      // if raw_key_and_cert is true, use the key and cert from the environment
-      // this is used for fly.io secrets
-      key_file: process.env.FLY_SECRET_TAK_KEY_FILE ?? undefined,
-      cert_file: process.env.FLY_SECRET_TAK_CERT_FILE ?? undefined,
-      endpoint: process.env.FLY_SECRET_TAK_ENDPOINT ?? undefined,
-      connection_id: process.env.FLY_SECRET_TAK_CONNECTION_ID ?? undefined,
-    },
     consumer: {
+      enabled: process.env.FLY_SECRET_CONSUMER_ENABLED === "true",
       catalyst_token:
         process.env.FLY_SECRET_CONSUMER_CATALYST_TOKEN ?? undefined,
       catalyst_query:
         process.env.FLY_SECRET_CONSUMER_CATALYST_QUERY ?? undefined,
+      catalyst_query_poll_interval_ms: process.env
+        .FLY_SECRET_CONSUMER_CATALYST_QUERY_POLL_INTERVAL_MS
+        ? Number(
+            process.env.FLY_SECRET_CONSUMER_CATALYST_QUERY_POLL_INTERVAL_MS,
+          )
+        : undefined,
     },
     producer: {
+      enabled: process.env.FLY_SECRET_PRODUCER_ENABLED === "true",
       catalyst_app_id:
         process.env.FLY_SECRET_PRODUCER_CATALYST_APP_ID ?? undefined,
+      catalyst_jwt_issuer:
+        process.env.FLY_SECRET_PRODUCER_CATALYST_JWT_ISSUER ?? undefined,
     },
   };
 }
@@ -76,7 +73,6 @@ const CoTOverwriteSchema = z.object({
 const ConfigSchema = z.object({
   dev: z.boolean().default(false),
   tak: z.object({
-    raw_key_and_cert: z.boolean().default(false),
     connection_id: z.string(),
     endpoint: z.string(),
     key_file: z.string(),
@@ -86,8 +82,19 @@ const ConfigSchema = z.object({
     catalyst_lon: z.number().optional(),
     group: z.string(),
     role: z.string(),
-    rtsp_server: z.string(),
-    rtsp_port: z.string(),
+    video: z
+      .object({
+        rtsp: z
+          .object({
+            enabled: z.boolean(),
+            rtsp_server: z.string(),
+            rtsp_port: z.string(),
+            rtsp_path: z.string(),
+          })
+          .optional(),
+      })
+      .optional()
+      .default({}),
   }),
   consumer: z
     .object({
@@ -120,6 +127,7 @@ const ConfigSchema = z.object({
     .object({
       enabled: z.boolean(),
       catalyst_jwks_url: z.string(),
+      catalyst_jwt_issuer: z.string(),
       catalyst_app_id: z.string(),
       local_db_path: z.string().default("./db/producer"),
       local_download_path: z.string().default(".tak_downloads"),
@@ -162,8 +170,10 @@ export function getConfig(): Config {
   if (process.env.NODE_ENV !== "development") {
     console.log("[CONFIG] NODE_ENV is not development, setting dev to false");
     validatedConfig.dev = false;
-    validatedConfig.tak.raw_key_and_cert = true;
   }
+
+  console.log("[CONFIG] validatedConfig", validatedConfig);
+
   return validatedConfig;
 }
 

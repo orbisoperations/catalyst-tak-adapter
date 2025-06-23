@@ -35,7 +35,7 @@ while (config === undefined) {
 
 let consumer: Consumer | undefined = undefined;
 let producer: Producer | undefined = undefined;
-if (config.consumer?.catalyst_token) {
+if (config.consumer?.enabled) {
   try {
     consumer = new Consumer(config);
   } catch (e) {
@@ -43,7 +43,7 @@ if (config.consumer?.catalyst_token) {
   }
 }
 
-if (config.producer && config.producer.catalyst_app_id) {
+if (config.producer?.enabled) {
   try {
     producer = new Producer(config);
   } catch (e) {
@@ -67,7 +67,9 @@ takClient.start({
     if (producer)
       console.error(
         "all messages: ",
-        producer.getAllCoT()?.map((cot) => cot.event._attributes.uid),
+        producer
+          .getAllCoT()
+          ?.map((cot) => cot.event._attributes.uid + " " + JSON.stringify(cot)),
       );
   },
 });
@@ -91,18 +93,23 @@ function generateCallsignHeartbeatCoT({
 }): CoT {
   const now = new Date();
   const stale = new Date(now.getTime() + 5 * 60 * 1000);
-  const RTSP_URL = "192.168.1.102:7428";
-  const RTSP_PORT = "7428";
-  const RTSP_STREAM_PATH = "/stream";
+  let videoDetailItem: string | null = null;
+  if (config?.tak.video?.rtsp?.enabled) {
+    const RTSP_URL = config?.tak.video?.rtsp?.rtsp_server ?? "192.168.1.101";
+    const RTSP_PORT = config?.tak.video?.rtsp?.rtsp_port ?? "7428";
+    const RTSP_STREAM_PATH = config?.tak.video?.rtsp?.rtsp_path ?? "/stream";
+    videoDetailItem = `
+     <__video uid="${callsign}" url="rtsp://${RTSP_URL}:${RTSP_PORT}${RTSP_STREAM_PATH}" >
+        <ConnectionEntry networkTimeout="5000" uid="${callsign}" path="${RTSP_STREAM_PATH}"
+            protocol="rtsp" bufferTime="-1" address="${RTSP_URL}" port="${RTSP_PORT}"
+            roverPort="-1" rtspReliable="1" ignoreEmbbededKLV="false" alias="live/${callsign}" />
+    </__video>`;
+  }
   return new CoT(
     `<event version="2.0" uid="${callsign}" type="${type}" how="${how}" time="${now.toISOString()}" start="${now.toISOString()}" stale="${stale.toISOString()}">
             <point lat="${lat}" lon="${lon}" hae="999999.0" ce="999999.0" le="999999.0"/>
             <detail>
-                <__video uid="${callsign}" url="rtsp://${RTSP_URL}/stream" >
-                    <ConnectionEntry networkTimeout="5000" uid="${callsign}" path="${RTSP_STREAM_PATH}"
-                        protocol="rtsp" bufferTime="-1" address="${RTSP_URL}" port="${RTSP_PORT}"
-                        roverPort="-1" rtspReliable="1" ignoreEmbbededKLV="false" alias="live/${callsign}" />
-                </__video>
+                ${videoDetailItem ? `${videoDetailItem}` : ""}
                 <contact callsign="${callsign}" endpoint="*:-1:stcp"/>
                 <__group name="${group}" role="${role}"/>
                 <takv device="Tak Adapter" platform="Catalyst" os="linux" version="0.0.1"/>

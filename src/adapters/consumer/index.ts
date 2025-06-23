@@ -29,6 +29,37 @@ function toStr(
   return String(val);
 }
 
+function buildRTSP_DetailItems(
+  rtspUrl: string,
+  rtspPort: string,
+  rtspStreamPath: string,
+  callsign: string,
+): object {
+  return {
+    __video: {
+      _attributes: {
+        uid: callsign,
+        url: `rtsp://${rtspUrl}:${rtspPort}${rtspStreamPath}`,
+      },
+      ConnectionEntry: {
+        _attributes: {
+          networkTimeout: "5000",
+          uid: callsign,
+          path: rtspStreamPath,
+          protocol: "rtsp",
+          bufferTime: "-1",
+          address: rtspUrl,
+          port: rtspPort,
+          roverPort: "-1",
+          rtspReliable: "1",
+          ignoreEmbbededKLV: "false",
+          alias: "live/" + callsign,
+        },
+      },
+    },
+  };
+}
+
 export class Consumer {
   config: Config;
   poll_interval_ms: number;
@@ -279,8 +310,18 @@ export class Consumer {
         continue;
       }
 
+      // if the data is not an array, make it an array
+      // the below is a workaround for the fact that the data is not always an array
+      // TODO, refactor to make cleaner
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const dataToTransform = data[dataName] as any[];
+      let dataToTransform: any[] = [];
+      if (!Array.isArray(data[dataName])) {
+        dataToTransform = [data[dataName]];
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        dataToTransform = data[dataName] as any[];
+      }
+
       for (const dataElement of dataToTransform) {
         let extractedVals = this.extractCoTValues(
           dataName,
@@ -291,18 +332,30 @@ export class Consumer {
           console.error("error extracting values for", dataName);
           continue;
         }
-
-        if (parser.overwrite)
+        if (parser.overwrite) {
           extractedVals = this.overWriteCoTValues(
             extractedVals,
             parser.overwrite!,
           );
-
-        const RTSP_URL = this.config.tak.rtsp_server ?? "192.168.1.102";
-        const RTSP_PORT = this.config.tak.rtsp_port ?? "7428";
-        const RTSP_STREAM_PATH = "/stream";
+        }
 
         const cotValues = this.fillDefaultCoTValues(extractedVals);
+        const extraCOT_DetailItems: object[] = [];
+
+        if (this.config.tak.video?.rtsp?.enabled) {
+          const RTSP_URL = this.config.tak.video.rtsp.rtsp_server;
+          const RTSP_PORT = this.config.tak.video.rtsp.rtsp_port;
+          const RTSP_STREAM_PATH = this.config.tak.video.rtsp.rtsp_path;
+          extraCOT_DetailItems.push(
+            buildRTSP_DetailItems(
+              RTSP_URL,
+              RTSP_PORT,
+              RTSP_STREAM_PATH,
+              cotValues.callsign!,
+            ),
+          );
+        }
+
         const formedCot = new CoT({
           event: {
             _attributes: {
@@ -323,27 +376,7 @@ export class Consumer {
               remarks: {
                 _text: cotValues.remarks,
               },
-              __video: {
-                _attributes: {
-                  uid: cotValues.callsign,
-                  url: "rtsp://" + RTSP_URL + RTSP_STREAM_PATH,
-                },
-                ConnectionEntry: {
-                  _attributes: {
-                    networkTimeout: "5000",
-                    uid: cotValues.callsign,
-                    path: RTSP_STREAM_PATH,
-                    protocol: "rtsp",
-                    bufferTime: "-1",
-                    address: RTSP_URL,
-                    port: RTSP_PORT,
-                    roverPort: "-1",
-                    rtspReliable: "1",
-                    ignoreEmbbededKLV: "false",
-                    alias: "live/" + cotValues.callsign,
-                  },
-                },
-              },
+              ...extraCOT_DetailItems,
             },
             point: {
               _attributes: {

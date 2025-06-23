@@ -25,9 +25,15 @@ export class Producer {
   appId: string;
   jwks;
   mapSize: number;
+  catalyst_jwt_issuer: string;
 
   constructor(config: Config) {
+    if (!config.producer || !config.producer.enabled) {
+      throw new Error("Producer is not enabled");
+    }
+
     this.config = config;
+    this.catalyst_jwt_issuer = config.producer?.catalyst_jwt_issuer;
     this.dbPath = config.producer?.local_db_path || "./db/producer";
     this.downloadPath =
       config.producer?.local_download_path || ".tak_downloads";
@@ -452,7 +458,7 @@ export class Producer {
 
       const validationResult = await verifyJwtWithRemoteJwks(
         token,
-        this.jwksEndpoint,
+        this.catalyst_jwt_issuer,
         this.appId,
         this.jwksEndpoint,
       );
