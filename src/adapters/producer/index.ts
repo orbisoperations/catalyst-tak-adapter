@@ -107,8 +107,9 @@ export class Producer {
 
         // const filePath = await this.getFileFromTak(senderUrl, filename);
         // const fileHash = await this.calculateFileHash(filePath)
+      } else {
+        console.log("CoT: not a fileshare");
       }
-      console.log(cot.raw);
       await this.db.put(uid, cot.raw);
       console.log(`CoT (${uid}) : stored`);
     } catch (error) {
