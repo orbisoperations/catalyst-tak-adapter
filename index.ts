@@ -33,6 +33,11 @@ while (config === undefined) {
   }
 }
 
+if (!config.producer?.enabled && !config.consumer?.enabled) {
+  console.error("at least one of producer or consumer must be enabled");
+  process.exit(1);
+}
+
 let consumer: Consumer | undefined = undefined;
 let producer: Producer | undefined = undefined;
 if (config.consumer?.enabled) {
@@ -75,11 +80,11 @@ takClient.start({
 });
 
 function generateCallsignHeartbeatCoT({
-  callsign = "CATALYST",
+  callsign = "CATALYST-TAK-ADAPTER",
   type = "a-f-G-U-C-I",
   how = "m-g",
-  lat = -64.0107,
-  lon = -59.452,
+  lat,
+  lon,
   group = "Cyan",
   role = "Team Member",
 }: {
@@ -90,7 +95,13 @@ function generateCallsignHeartbeatCoT({
   lon?: number;
   group?: string;
   role?: string;
-}): CoT {
+}): CoT | null {
+  if (!lat || !lon) {
+    console.error(
+      "generateCallsignHeartbeatCoT: local heartbeat lat and lon are required. could not send Heartbeat",
+    );
+    return null;
+  }
   const now = new Date();
   const stale = new Date(now.getTime() + 5 * 60 * 1000);
   let videoDetailItem: string | null = null;
@@ -109,7 +120,7 @@ function generateCallsignHeartbeatCoT({
     `<event version="2.0" uid="${callsign}" type="${type}" how="${how}" time="${now.toISOString()}" start="${now.toISOString()}" stale="${stale.toISOString()}">
             <point lat="${lat}" lon="${lon}" hae="999999.0" ce="999999.0" le="999999.0"/>
             <detail>
-                ${videoDetailItem ? `${videoDetailItem}` : ""}
+                ${videoDetailItem ?? ""}
                 <contact callsign="${callsign}" endpoint="*:-1:stcp"/>
                 <__group name="${group}" role="${role}"/>
                 <takv device="Tak Adapter" platform="Catalyst" os="linux" version="0.0.1"/>
@@ -127,19 +138,26 @@ takClient.setInterval(
   (tak: TAK) => {
     return async () => {
       const cot = generateCallsignHeartbeatCoT({
-        callsign: config?.tak.callsign ?? "CATALYST",
+        callsign: "CATALYST-TAK-ADAPTER",
         type: "a-f-G-U-C-I",
         how: "m-g",
-        lat: config?.tak.catalyst_lat ?? -64.0107,
-        lon: config?.tak.catalyst_lon ?? -59.452,
-        group: config?.tak.group ?? "Cyan",
-        role: config?.tak.role ?? "Team Member",
+        lat: config?.tak.catalyst_lat,
+        lon: config?.tak.catalyst_lon,
+        group: config?.tak.group,
+        role: config?.tak.role,
       });
-      console.log("SENDING LOCAL CALLSIGN", cot.to_xml());
+      if (!cot) {
+        console.error("takClient.setInterval: No CoT to send");
+        return;
+      }
+      console.log(
+        "takClient.setInterval: SENDING LOCAL CALLSIGN",
+        cot.to_xml(),
+      );
       try {
         tak.write([cot]);
       } catch (e) {
-        console.error("Error sending CoT", e);
+        console.error("takClient.setInterval: Error sending CoT", e);
       }
     };
   },
@@ -159,9 +177,17 @@ if (consumer) {
         try {
           const jsonResults = await consumer.doGraphqlQuery();
           console.log("jsonResults", jsonResults);
+          if (!jsonResults?.data) {
+            console.log("No data returned from graphql query");
+            return;
+          }
           const cots = consumer.jsonToCots(jsonResults);
-          console.log("cots", cots[0], cots[0].to_xml(), cots[0].uid());
+          if (cots.length === 0) {
+            console.log("No cots found by consumer");
+            return;
+          }
           const msgCots = await consumer.jsonToGeoChat(jsonResults);
+
           consumer.publishCot([...cots, ...msgCots], tak);
         } catch (e) {
           console.error("Error doing graphql query from consumer", e);
