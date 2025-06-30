@@ -1,5 +1,6 @@
 import { Consumer } from "../src/adapters/consumer";
 import { Config, CoTTransform } from "../src/config";
+import { createRTSPConnectionDetailItemPlugin } from "../src/adapters/consumer/consumer-plugins";
 // import TAK, { CoT } from '@tak-ps/node-tak';
 // import * as ld from 'lodash';
 import { expect, describe, beforeEach, it } from "bun:test";
@@ -192,5 +193,136 @@ describe("Consumer", () => {
     const json = { no: "data" };
     const result = consumer.jsonToCots(json);
     expect(result).toEqual([]);
+  });
+});
+
+describe("RTSP Video Plugin", () => {
+  it("creates valid RTSP connection detail item", () => {
+    const rtspUrl = "192.168.1.100";
+    const rtspPort = "8554";
+    const rtspStreamPath = "/stream1";
+    const callsign = "drone-1";
+
+    const result = createRTSPConnectionDetailItemPlugin(
+      rtspUrl,
+      rtspPort,
+      rtspStreamPath,
+      callsign,
+    );
+
+    expect(result).toEqual({
+      __video: {
+        _attributes: {
+          uid: "drone-1",
+          url: "rtsp://192.168.1.100:8554/stream1",
+        },
+        ConnectionEntry: {
+          _attributes: {
+            networkTimeout: "5000",
+            uid: "drone-1",
+            path: "/stream1",
+            protocol: "rtsp",
+            bufferTime: "-1",
+            address: "192.168.1.100",
+            port: "8554",
+            roverPort: "-1",
+            rtspReliable: "1",
+            ignoreEmbbededKLV: "false",
+            alias: "live/drone-1",
+          },
+        },
+      },
+    });
+  });
+
+  it("handles empty stream path", () => {
+    const rtspUrl = "192.168.1.100";
+    const rtspPort = "8554";
+    const rtspStreamPath = "";
+    const callsign = "drone-1";
+
+    const result = createRTSPConnectionDetailItemPlugin(
+      rtspUrl,
+      rtspPort,
+      rtspStreamPath,
+      callsign,
+    );
+
+    // @ts-expect-error: This is a mock result, missing fields are intentional
+    expect(result.__video?._attributes.url).toBe("rtsp://192.168.1.100:8554");
+    // @ts-expect-error: This is a mock result, missing fields are intentional
+    expect(result.__video?.ConnectionEntry._attributes.path).toBe("");
+  });
+
+  it("handles special characters in stream path", () => {
+    const rtspUrl = "192.168.1.100";
+    const rtspPort = "8554";
+    const rtspStreamPath = "/stream/camera_1?auth=token";
+    const callsign = "drone-1";
+
+    const result = createRTSPConnectionDetailItemPlugin(
+      rtspUrl,
+      rtspPort,
+      rtspStreamPath,
+      callsign,
+    );
+
+    // @ts-expect-error: This is a mock result, missing fields are intentional
+    expect(result.__video._attributes.url).toBe(
+      "rtsp://192.168.1.100:8554/stream/camera_1?auth=token",
+    );
+    // @ts-expect-error: This is a mock result, missing fields are intentional
+    expect(result.__video.ConnectionEntry._attributes.path).toBe(
+      "/stream/camera_1?auth=token",
+    );
+  });
+
+  it("maintains consistent callsign across all fields", () => {
+    const rtspUrl = "192.168.1.100";
+    const rtspPort = "8554";
+    const rtspStreamPath = "/stream1";
+    const callsign = "test-drone-123";
+
+    const result = createRTSPConnectionDetailItemPlugin(
+      rtspUrl,
+      rtspPort,
+      rtspStreamPath,
+      callsign,
+    );
+
+    const expectedCallsign = "test-drone-123";
+    // @ts-expect-error: This is a mock result, missing fields are intentional
+    expect(result.__video._attributes.uid).toBe(expectedCallsign);
+    // @ts-expect-error: This is a mock result, missing fields are intentional
+    expect(result.__video.ConnectionEntry._attributes.uid).toBe(
+      expectedCallsign,
+    );
+    // @ts-expect-error: This is a mock result, missing fields are intentional
+    expect(result.__video.ConnectionEntry._attributes.alias).toBe(
+      `live/${expectedCallsign}`,
+    );
+  });
+
+  it("verifies default connection parameters", () => {
+    const rtspUrl = "192.168.1.100";
+    const rtspPort = "8554";
+    const rtspStreamPath = "/stream1";
+    const callsign = "drone-1";
+
+    const result = createRTSPConnectionDetailItemPlugin(
+      rtspUrl,
+      rtspPort,
+      rtspStreamPath,
+      callsign,
+    );
+
+    // @ts-expect-error: This is a mock result, missing fields are intentional
+    const connectionAttrs = result.__video.ConnectionEntry._attributes;
+    expect(connectionAttrs.networkTimeout).toBe("5000");
+    expect(connectionAttrs.bufferTime).toBe("-1");
+    expect(connectionAttrs.roverPort).toBe("-1");
+    expect(connectionAttrs.rtspReliable).toBe("1");
+    expect(connectionAttrs.protocol).toBe("rtsp");
+    expect(connectionAttrs.ignoreEmbbededKLV).toBe("false");
   });
 });
