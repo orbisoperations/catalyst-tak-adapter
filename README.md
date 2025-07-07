@@ -49,6 +49,7 @@ You can use the following commands (via `bun run <command>` or `npm run <command
    > - You can override the config file location by setting the `CONFIG_PATH` environment variable.
 
 3. Run the container:
+
    ```bash
    bun run docker-compose
    ```
@@ -103,14 +104,61 @@ You can use the following commands (via `bun run <command>` or `npm run <command
 
 ## Deployment
 
+### Docker Configuration
+
+The Dockerfile has been updated to support certificate and key file configuration during build time:
+
+```dockerfile
+ARG TAK_CERT_FILE=tak-admin.cert.pem
+ARG TAK_KEY_FILE=tak-admin.key.pem
+```
+
+You can override these defaults during build:
+
+```bash
+docker build \
+  --build-arg TAK_CERT_FILE=your-cert.cert.pem \
+  --build-arg TAK_KEY_FILE=your-key.key.pem \
+  -t catalyst-tak-adapter .
+```
+
 ### Fly.io Deployment
 
 **Prerequisites:**
 
 - Fly.io account and CLI installed
 - Project configured for Fly.io deployment
+- TAK certificates and keys ready
 
-You can deploy the Catalyst TAK Adapter using Docker or Fly.io. See the [Deployment Guide](./docs/deployment/overview.md) for full details and advanced options.
+**Deployment Steps:**
+
+1. **Set up Fly.io configuration:**
+
+   ```bash
+   fly launch
+   ```
+
+2. **Configure certificate files:**
+
+   - Ensure your certificate files follow the naming convention:
+     - Certificate: `*.cert.pem`
+     - Key: `*.key.pem`
+
+3. **Deploy with certificate configuration:**
+
+   ```bash
+   fly deploy \
+     --build-arg TAK_CERT_FILE=your-cert.cert.pem \
+     --build-arg TAK_KEY_FILE=your-key.key.pem
+   ```
+
+4. **Set required secrets:**
+
+   ```bash
+   bun run fly-secrets.ts
+   ```
+
+For detailed deployment instructions and advanced options, see the [Deployment Guide](./docs/deployment/overview.md).
 
 ## Documentation
 
