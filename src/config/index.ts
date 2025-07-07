@@ -4,28 +4,37 @@ import { merge } from "lodash";
 import z from "zod";
 import { generateMock } from "@anatine/zod-mock";
 
-// Config items we'd like to keep secret
-export interface SecretConfig {
-  dev: boolean;
-  consumer: {
-    enabled: boolean;
-    catalyst_token?: string;
-    catalyst_query?: string;
-    catalyst_query_poll_interval_ms?: number;
-  };
-  producer: {
-    enabled: boolean;
-    catalyst_app_id?: string;
-    catalyst_jwt_issuer?: string;
-  };
-}
+// Zod schema for SecretConfig validation
+export const SecretConfigSchema = z
+  .object({
+    dev: z.boolean(),
+    consumer: z
+      .object({
+        enabled: z.boolean().optional(),
+        catalyst_token: z.string().optional(),
+        catalyst_query: z.string().optional(),
+        catalyst_query_poll_interval_ms: z.number().optional(),
+      })
+      .optional(),
+    producer: z
+      .object({
+        enabled: z.boolean().optional(),
+        catalyst_app_id: z.string().optional(),
+        catalyst_jwt_issuer: z.string().optional(),
+      })
+      .optional(),
+  })
+  .optional();
+export type SecretConfig = z.input<typeof SecretConfigSchema>;
 
 // Helper to get secrets from environment variables
 function getSecrets(): SecretConfig {
-  return {
+  const secrets: SecretConfig = {
     dev: process.env.NODE_ENV === "development",
     consumer: {
-      enabled: process.env.FLY_SECRET_CONSUMER_ENABLED === "true",
+      enabled: process.env.FLY_SECRET_CONSUMER_ENABLED
+        ? process.env.FLY_SECRET_CONSUMER_ENABLED === "true"
+        : undefined,
       catalyst_token:
         process.env.FLY_SECRET_CONSUMER_CATALYST_TOKEN ?? undefined,
       catalyst_query:
@@ -38,13 +47,18 @@ function getSecrets(): SecretConfig {
         : undefined,
     },
     producer: {
-      enabled: process.env.FLY_SECRET_PRODUCER_ENABLED === "true",
+      enabled: process.env.FLY_SECRET_PRODUCER_ENABLED
+        ? process.env.FLY_SECRET_PRODUCER_ENABLED === "true"
+        : undefined,
       catalyst_app_id:
         process.env.FLY_SECRET_PRODUCER_CATALYST_APP_ID ?? undefined,
       catalyst_jwt_issuer:
         process.env.FLY_SECRET_PRODUCER_CATALYST_JWT_ISSUER ?? undefined,
     },
   };
+
+  const parsedSecrets = SecretConfigSchema.safeParse(secrets);
+  return parsedSecrets?.data || { dev: process.env.NODE_ENV === "development" };
 }
 
 // Zod schemas for Config validation
@@ -124,16 +138,21 @@ const ConfigSchema = z.object({
     })
     .optional(),
   producer: z
-    .object({
-      enabled: z.boolean(),
-      catalyst_jwks_url: z.string(),
-      catalyst_jwt_issuer: z.string(),
-      catalyst_app_id: z.string(),
-      local_db_path: z.string().default("./db/producer"),
-      local_download_path: z.string().default(".tak_downloads"),
-      graphql_port: z.number(),
-      graphql_host: z.string(),
-    })
+    .discriminatedUnion("enabled", [
+      z.object({
+        enabled: z.literal(true),
+        catalyst_jwks_url: z.string(),
+        catalyst_jwt_issuer: z.string(),
+        catalyst_app_id: z.string(),
+        local_db_path: z.string().default("./db/producer"),
+        local_download_path: z.string().default(".tak_downloads"),
+        graphql_port: z.number(),
+        graphql_host: z.string(),
+      }),
+      z.object({
+        enabled: z.literal(false),
+      }),
+    ])
     .optional(),
 });
 

@@ -10,6 +10,7 @@ import { Config, CoTOverwrite, CoTTransform } from "../../config";
 import TAK, { CoT } from "@tak-ps/node-tak";
 import * as ld from "lodash";
 import { open, RootDatabase } from "lmdb";
+import { createRTSPConnectionDetailItemPlugin } from "./consumer-plugins";
 
 interface CoTValues {
   uid?: string;
@@ -27,37 +28,6 @@ function toStr(
 ): string | undefined {
   if (val === undefined || val === null) return undefined;
   return String(val);
-}
-
-function buildRTSP_DetailItems(
-  rtspUrl: string,
-  rtspPort: string,
-  rtspStreamPath: string,
-  callsign: string,
-): object {
-  return {
-    __video: {
-      _attributes: {
-        uid: callsign,
-        url: `rtsp://${rtspUrl}:${rtspPort}${rtspStreamPath}`,
-      },
-      ConnectionEntry: {
-        _attributes: {
-          networkTimeout: "5000",
-          uid: callsign,
-          path: rtspStreamPath,
-          protocol: "rtsp",
-          bufferTime: "-1",
-          address: rtspUrl,
-          port: rtspPort,
-          roverPort: "-1",
-          rtspReliable: "1",
-          ignoreEmbbededKLV: "false",
-          alias: "live/" + callsign,
-        },
-      },
-    },
-  };
 }
 
 export class Consumer {
@@ -88,14 +58,9 @@ export class Consumer {
         `Missing required environment variables: ${missingEnvs.join(", ")}`,
       );
     }
-
-    this.catalyst_endpoint =
-      this.config.consumer.catalyst_endpoint ??
-      "https://gateway.catalyst.devintelops.io/graphql";
-
+    this.catalyst_endpoint = this.config.consumer.catalyst_endpoint;
     this.poll_interval_ms =
       this.config.consumer.catalyst_query_poll_interval_ms ?? 10 * 1000;
-
     this.db = this.initDB();
   }
 
@@ -147,7 +112,6 @@ export class Consumer {
     }
 
     const data = json.data;
-    const senderUID = this.config?.tak.callsign ?? "CATALYST";
     const chatParsers = this.config.consumer?.chat;
     if (chatParsers === undefined) {
       console.warn(
@@ -155,6 +119,14 @@ export class Consumer {
       );
       return [];
     }
+    const cotsParser = this.config.consumer?.parser?.cots;
+    if (cotsParser === undefined) {
+      console.warn(
+        "no cots transforms have been found and unable to convert data to CoT",
+      );
+      return [];
+    }
+
     console.log("chat parsers", chatParsers);
     const cots: CoT[] = [];
     for (const [dataName, chatParser] of Object.entries(chatParsers ?? {})) {
@@ -203,14 +175,26 @@ export class Consumer {
 
           const recipient = chatParser.recipient ?? "All Chat Rooms";
           // build CoT
+          const cotValues = this.extractCoTValues(
+            dataName,
+            dataElement,
+            cotsParser?.transform,
+          );
+
+          const senderUID =
+            cotValues?.callsign ||
+            this.config?.consumer?.parser?.latestTelemetry?.overwrite
+              ?.callsign ||
+            this.config?.tak.callsign ||
+            "CATALYST-TAK-ADAPTER";
 
           const cot = new CoT({
             event: {
               _attributes: {
                 version: "2.0",
                 uid: `GeoChat.${senderUID}.${recipient}.${messageId}`,
-                type: "b-t-f",
-                how: "h-g-i-g-o",
+                type: cotValues?.type ?? "b-t-f",
+                how: cotValues?.how ?? "h-g-i-g-o",
                 time: new Date().toISOString(),
                 start: new Date().toISOString(),
                 stale: new Date(
@@ -220,9 +204,11 @@ export class Consumer {
               },
               point: {
                 _attributes: {
-                  lat: this.config.tak.catalyst_lat ?? -64.0107,
-                  lon: this.config.tak.catalyst_lon ?? -59.452,
-                  hae: "999999.0",
+                  lat:
+                    cotValues?.lat ?? this.config.tak.catalyst_lat ?? -64.0107,
+                  lon:
+                    cotValues?.lon ?? this.config.tak.catalyst_lon ?? -59.452,
+                  hae: cotValues?.hae ?? "999999.0",
                   ce: "999999.0",
                   le: "999999.0",
                 },
@@ -340,21 +326,9 @@ export class Consumer {
         }
 
         const cotValues = this.fillDefaultCoTValues(extractedVals);
-        const extraCOT_DetailItems: object[] = [];
-
-        if (this.config.tak.video?.rtsp?.enabled) {
-          const RTSP_URL = this.config.tak.video.rtsp.rtsp_server;
-          const RTSP_PORT = this.config.tak.video.rtsp.rtsp_port;
-          const RTSP_STREAM_PATH = this.config.tak.video.rtsp.rtsp_path;
-          extraCOT_DetailItems.push(
-            buildRTSP_DetailItems(
-              RTSP_URL,
-              RTSP_PORT,
-              RTSP_STREAM_PATH,
-              cotValues.callsign!,
-            ),
-          );
-        }
+        // create plugins for the detail item
+        const cotDetailItemPlugins: object[] =
+          this.createCotDetailItemPlugins(cotValues);
 
         const formedCot = new CoT({
           event: {
@@ -376,7 +350,10 @@ export class Consumer {
               remarks: {
                 _text: cotValues.remarks,
               },
-              ...extraCOT_DetailItems,
+              // convert list into object to be added to the detail item with spread operator
+              ...cotDetailItemPlugins.reduce((acc, item) => {
+                return { ...acc, ...item };
+              }, {}),
             },
             point: {
               _attributes: {
@@ -479,5 +456,27 @@ export class Consumer {
 
   publishCot(cots: CoT[], tak: TAK) {
     tak.write(cots);
+  }
+
+  createCotDetailItemPlugins(cotValues: CoTValues) {
+    const cotDetailItemPlugins: object[] = [];
+    if (this.config.tak.video?.rtsp?.enabled) {
+      const RTSP_URL = this.config.tak.video.rtsp.rtsp_server;
+      const RTSP_PORT = this.config.tak.video.rtsp.rtsp_port;
+      const RTSP_STREAM_PATH = this.config.tak.video.rtsp.rtsp_path;
+      cotDetailItemPlugins.push(
+        createRTSPConnectionDetailItemPlugin(
+          RTSP_URL,
+          RTSP_PORT,
+          RTSP_STREAM_PATH,
+          cotValues.callsign!,
+        ),
+      );
+    }
+
+    // add more plugins here as needed
+    // ...
+
+    return cotDetailItemPlugins;
   }
 }
