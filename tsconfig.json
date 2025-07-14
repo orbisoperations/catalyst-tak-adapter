@@ -1,5 +1,5 @@
 {
-  "include": ["index.ts", "src/**/*.ts"],
+  "include": ["index.ts", "src/**/*.ts", "tests/**/*.ts"],
   "compilerOptions": {
     "target": "es2022" /* Set the JavaScript language version for emitted JavaScript and include compatible library declarations. */,
     /* Modules */

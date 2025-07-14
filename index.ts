@@ -1,4 +1,5 @@
 import TAK, { CoT } from "@tak-ps/node-tak";
+import { CoTParser } from "@tak-ps/node-cot";
 import { TakClient } from "./src/tak";
 import { getConfig, Config } from "./src/config";
 import { Consumer } from "./src/adapters/consumer";
@@ -65,7 +66,7 @@ await takClient.init();
 
 takClient.start({
   onCoT: async (cot: CoT) => {
-    console.log("Received CoT: ", cot.to_xml());
+    console.log("Received CoT: ", CoTParser.to_xml(cot));
     if (producer) await producer.putCoT(cot);
   },
   onPing: async () => {
@@ -116,7 +117,7 @@ function generateCallsignHeartbeatCoT({
             roverPort="-1" rtspReliable="1" ignoreEmbbededKLV="false" alias="live/${callsign}" />
     </__video>`;
   }
-  return new CoT(
+  return CoTParser.from_xml(
     `<event version="2.0" uid="${callsign}" type="${type}" how="${how}" time="${now.toISOString()}" start="${now.toISOString()}" stale="${stale.toISOString()}">
             <point lat="${lat}" lon="${lon}" hae="999999.0" ce="999999.0" le="999999.0"/>
             <detail>
@@ -152,7 +153,7 @@ takClient.setInterval(
       }
       console.log(
         "takClient.setInterval: SENDING LOCAL CALLSIGN",
-        cot.to_xml(),
+        CoTParser.to_xml(cot),
       );
       try {
         tak.write([cot]);

@@ -1,8 +1,8 @@
-import { CoT } from "@tak-ps/node-tak";
+import CoT from "@tak-ps/node-cot";
 import { open, RootDatabase } from "lmdb";
 import { Config } from "../../config";
 import type { Static } from "@sinclair/typebox";
-import JSONCoT from "@tak-ps/node-cot/lib/types/types";
+import { Types } from "@tak-ps/node-cot";
 import { Hono } from "hono";
 import { createYoga, createSchema } from "graphql-yoga";
 import { createRemoteJWKSet } from "jose";
@@ -12,7 +12,7 @@ import { readKeyAndCert } from "../../tak";
 import https from "node:https";
 import { verifyJwtWithRemoteJwks } from "../../auth/catalyst-jwt";
 
-type CoTMsg = Static<typeof JSONCoT>;
+type CoTMsg = Static<typeof Types.default>;
 
 export class Producer {
   config: Config;
@@ -89,27 +89,12 @@ export class Producer {
     try {
       // handle fileshare
       const uid = cot.uid();
-      if (cot.to_geojson().properties.fileshare) {
-        console.log("CoT: ", cot.to_geojson().properties.fileshare);
-
-        if (cot.raw.event.point._attributes.hae === "NaN") {
-          console.log("HAE is NaN");
-          cot.raw.event.point._attributes.hae = "0";
-        }
-        if (cot.raw.event.point._attributes.ce === "NaN") {
-          console.log("CE is NaN");
-          cot.raw.event.point._attributes.ce = "0";
-        }
-        if (cot.raw.event.point._attributes.le === "NaN") {
-          console.log("LE is NaN");
-          cot.raw.event.point._attributes.le = "0";
-        }
-
-        // const filePath = await this.getFileFromTak(senderUrl, filename);
-        // const fileHash = await this.calculateFileHash(filePath)
+      if (cot.detail().fileshare) {
+        console.log("CoT: ", cot.detail().fileshare);
       } else {
         console.log("CoT: not a fileshare");
       }
+      console.log("CoT: (uid: ", uid, ") ", JSON.stringify(cot.raw));
       await this.db.put(uid, cot.raw);
       console.log(`CoT (${uid}) : stored`);
     } catch (error) {
@@ -172,7 +157,7 @@ export class Producer {
         return undefined;
       }
       console.log(`CoT (${uid}) : retrieved`);
-      return cot as Static<typeof JSONCoT>;
+      return cot as CoTMsg;
     } catch (error) {
       console.error("Error retrieving CoT from local database", error);
     }
@@ -381,9 +366,12 @@ export class Producer {
                         senderCallsign:
                           cot.event.detail?.__chat._attributes.senderCallsign,
                         chatGroup: {
-                          uid0: Object.entries(cot.event.detail?.__chat.chatgrp)
-                            .filter(([key]) => key !== "id")
-                            .map(([, value]) => value),
+                          uids:
+                            Object.entries(
+                              cot.event.detail?.__chat.chatgrp._attributes,
+                            )
+                              .filter(([key]) => key !== "id")
+                              .map((a) => a[1]) || [],
                           id: cot.event.detail?.__chat.chatgrp.id ?? "",
                         },
                       }

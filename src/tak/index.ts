@@ -21,9 +21,14 @@ export class TakClient {
 
   async init() {
     this.tak = await TAK.connect(
-      this.config.tak.connection_id || "ConnectionID",
       new URL(this.config.tak.endpoint),
-      readKeyAndCert(this.config),
+      {
+        ...readKeyAndCert(this.config),
+        // rejectUnauthorized: true,
+      },
+      {
+        id: this.config.tak.connection_id || "ConnectionID",
+      },
     );
   }
 
