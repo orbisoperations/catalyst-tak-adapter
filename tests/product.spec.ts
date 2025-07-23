@@ -1,10 +1,79 @@
-import { expect, describe, it, afterEach } from "bun:test";
+import * as realFs from "node:fs";
+import { expect, describe, it, afterEach, mock, afterAll } from "bun:test";
+
+// Mock fs module
+mock.module("node:fs", () => {
+  const mockWriteStream = {
+    on: mock((event, callback) => {
+      // Simulate successful events
+      if (event === "finish") {
+        setTimeout(callback, 10);
+      }
+      return mockWriteStream;
+    }),
+    close: mock(() => {}),
+    emit: mock(() => {}),
+  };
+
+  return {
+    default: {
+      readFileSync: () => "Hello world. Mocked file content.",
+      createWriteStream: mock(() => mockWriteStream),
+      existsSync: mock(() => true),
+      mkdirSync: mock(() => {}),
+      unlink: mock((path, callback) => {
+        // Simulate successful unlink
+        if (callback) callback();
+      }),
+    },
+  };
+});
+
+mock.module("node:https", () => {
+  const mockResponse = {
+    statusCode: 200,
+    statusMessage: "OK",
+    pipe: mock((stream) => {
+      // Simulate successful pipe operation
+      setTimeout(() => {
+        stream.emit("finish");
+      }, 10);
+      return stream;
+    }),
+  };
+
+  const mockRequest = {
+    on: mock(() => {
+      // Don't emit error by default for successful case
+      return mockRequest;
+    }),
+  };
+
+  return {
+    default: {
+      get: mock((url, options, callback) => {
+        // Call the callback with the mock response
+        if (typeof options === "function") {
+          // If options is actually the callback
+          options(mockResponse);
+        } else if (typeof callback === "function") {
+          callback(mockResponse);
+        }
+        return mockRequest;
+      }),
+    },
+  };
+});
+
 import { Config } from "../src/config";
 import { Producer } from "../src/adapters/producer";
-import { CoTParser } from "@tak-ps/node-cot";
-import fs from "fs";
+import { CoT } from "@tak-ps/node-tak";
 
 describe("Producer", () => {
+  afterAll(() => {
+    mock.restore();
+  });
+
   describe("local storage", () => {
     // missing tak and consumer fields
     const mockConfig: Config = {
@@ -33,7 +102,7 @@ describe("Producer", () => {
         catalyst_lon: 0,
       },
     };
-    const exampleCoT = CoTParser.from_xml(`
+    const exampleCoT = new CoT(`
             <event version="2.0" uid="a4f460" type="a-f-G-U-C" how="h-g-i-g-o" time="2024-10-16T19:52:25.747Z" start="2024-10-16T19:52:25.747Z" stale="2024-10-16T19:57:25.747Z">
                 <point lat="38.804169" lon="-76.136627" hae="1575" ce="999999.0" le="999999.0"/>
                 <detail>
@@ -84,7 +153,7 @@ describe("Producer", () => {
 
   describe("GraphQL resolver validation", () => {
     afterEach(() => {
-      fs.rmSync("tests/.tak_test_db", { recursive: true, force: true });
+      realFs.rmSync("tests/.tak_test_db", { recursive: true, force: true });
     });
 
     const mockConfig: Config = {
@@ -125,7 +194,7 @@ describe("Producer", () => {
     // Basic CoT without chat, fileshare, or remarks
     const basicCoT = (() => {
       const { start, stale } = getCurrentTimestamps();
-      return CoTParser.from_xml(`
+      return new CoT(`
         <event version="2.0" uid="basic-test" type="a-f-G-U-C" how="h-g-i-g-o" time="${start}" start="${start}" stale="${stale}">
           <point lat="38.804169" lon="-76.136627" hae="1575" ce="999999.0" le="999999.0"/>
           <detail>
@@ -141,7 +210,7 @@ describe("Producer", () => {
     // Chat CoT
     const chatCoT = (() => {
       const { start, stale } = getCurrentTimestamps();
-      return CoTParser.from_xml(`
+      return new CoT(`
         <event version="2.0" uid="chat-test" type="b-t-f" how="h-g-i-g-o" time="${start}" start="${start}" stale="${stale}">
           <point lat="38.491979" lon="-121.526124" hae="-40.895" ce="4.5" le="9999999.0"/>
           <detail>
@@ -158,7 +227,7 @@ describe("Producer", () => {
     // Fileshare CoT
     const fileshareCoT = (() => {
       const { start, stale } = getCurrentTimestamps();
-      return CoTParser.from_xml(`
+      return new CoT(`
         <event version="2.0" uid="fileshare-test" type="b-f-t-r" how="h-e" time="${start}" start="${start}" stale="${stale}">
           <point lat="-58.90375561" lon="-123.15202048" hae="999999.0" ce="999999.0" le="999999.0"/>
           <detail>
@@ -172,7 +241,7 @@ describe("Producer", () => {
     // Remarks CoT
     const remarksCoT = (() => {
       const { start, stale } = getCurrentTimestamps();
-      return CoTParser.from_xml(`
+      return new CoT(`
         <event version="2.0" uid="remarks-test" type="b-m-p-s-m" how="h-g-i-g-o" time="${start}" start="${start}" stale="${stale}">
           <point lat="-1.9419843375972548" lon="-72.24609375" hae="999999.0" ce="999999.0" le="999999.0"/>
           <detail>
@@ -225,9 +294,9 @@ describe("Producer", () => {
       expect(typeof cot.how).toBe("string");
 
       // Validate point structure
-      expect(typeof cot.point.lat).toBe("number");
-      expect(typeof cot.point.lon).toBe("number");
-      expect(typeof cot.point.hae).toBe("number");
+      expect(typeof cot.point.lat).toBe("string");
+      expect(typeof cot.point.lon).toBe("string");
+      expect(typeof cot.point.hae).toBe("string");
 
       // Validate detail structure
       expect(typeof cot.detail.callsign).toBe("string");
@@ -362,6 +431,15 @@ describe("Producer", () => {
       expect(typeof cot.detail.fileshare!.senderUid).toBe("string");
       expect(typeof cot.detail.fileshare!.senderCallsign).toBe("string");
       expect(typeof cot.detail.fileshare!.name).toBe("string");
+
+      // get the file
+      const file = producer.getFileShare(cot.detail.fileshare!.uid);
+      expect(file).toBeDefined();
+      expect(file!.uid).toBe(cot.uid);
+      expect(file!.filename).toBe(
+        cot.uid + "_" + cot.detail.fileshare!.filename,
+      );
+      expect(file!.content).toBe("Hello world. Mocked file content.");
 
       await producer.closeDB();
     });
@@ -508,9 +586,9 @@ describe("Producer", () => {
         expect(typeof cot.uid).toBe("string");
         expect(typeof cot.type).toBe("string");
         expect(typeof cot.how).toBe("string");
-        expect(typeof cot.point.lat).toBe("number");
-        expect(typeof cot.point.lon).toBe("number");
-        expect(typeof cot.point.hae).toBe("number");
+        expect(typeof cot.point.lat).toBe("string");
+        expect(typeof cot.point.lon).toBe("string");
+        expect(typeof cot.point.hae).toBe("string");
         expect(typeof cot.detail.callsign).toBe("string");
       });
 

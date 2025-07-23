@@ -1,4 +1,4 @@
-import fs from "fs";
+import fs from "node:fs";
 import { Config } from "../config";
 import TAK, { CoT } from "@tak-ps/node-tak";
 
@@ -44,6 +44,8 @@ export class TakClient {
     this.tak
       .on("cot", async (cot: CoT) => {
         if (hooks.onCoT) {
+          const pos = cot.position();
+          cot.position([pos[0] ?? 0, pos[1] ?? 0, pos[2] ?? 0]);
           await hooks.onCoT(cot);
         }
       })
