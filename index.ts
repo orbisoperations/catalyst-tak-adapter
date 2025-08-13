@@ -65,8 +65,15 @@ await takClient.init();
 
 takClient.start({
   onCoT: async (cot: CoT) => {
-    console.log("Received CoT: ", cot.to_xml());
-    if (producer) await producer.putCoT(cot);
+    console.log("Received CoT: ");
+    if (producer) {
+      try {
+        await producer.putCoT(cot);
+        console.log("CoT saved successfully");
+      } catch (e) {
+        console.error("Error saving CoT", e);
+      }
+    }
   },
   onPing: async () => {
     if (producer)

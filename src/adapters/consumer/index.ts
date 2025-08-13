@@ -11,6 +11,7 @@ import TAK, { CoT } from "@tak-ps/node-tak";
 import * as ld from "lodash";
 import { open, RootDatabase } from "lmdb";
 import { createRTSPConnectionDetailItemPlugin } from "./consumer-plugins";
+import { CoTParser } from "@tak-ps/node-cot";
 
 interface CoTValues {
   uid?: string;
@@ -204,11 +205,13 @@ export class Consumer {
               },
               point: {
                 _attributes: {
-                  lat:
+                  lat: Number(
                     cotValues?.lat ?? this.config.tak.catalyst_lat ?? -64.0107,
-                  lon:
+                  ),
+                  lon: Number(
                     cotValues?.lon ?? this.config.tak.catalyst_lon ?? -59.452,
-                  hae: cotValues?.hae ?? "999999.0",
+                  ),
+                  hae: Number(cotValues?.hae ?? "999999.0"),
                   ce: "999999.0",
                   le: "999999.0",
                 },
@@ -249,7 +252,7 @@ export class Consumer {
               },
             },
           });
-          console.log("cot", cot.to_xml());
+          console.log("cot", CoTParser.to_xml(cot));
           cots.push(cot);
         }
       }
@@ -334,9 +337,9 @@ export class Consumer {
           event: {
             _attributes: {
               version: "2.0",
-              uid: cotValues.uid,
-              type: cotValues.type,
-              how: cotValues.how,
+              uid: cotValues.uid ?? "<NO-UID>",
+              type: cotValues.type ?? "<NO-TYPE>",
+              how: cotValues.how ?? "<NO-HOW>",
               time: new Date().toISOString(),
               start: new Date().toISOString(),
               stale: new Date(Date.now() + this.poll_interval_ms).toISOString(),
@@ -357,9 +360,9 @@ export class Consumer {
             },
             point: {
               _attributes: {
-                lat: cotValues.lat,
-                lon: cotValues.lon,
-                hae: cotValues.hae,
+                lat: Number(cotValues.lat || 0),
+                lon: Number(cotValues.lon || 0),
+                hae: Number(cotValues.hae || 0),
                 ce: "999999.0",
                 le: "999999.0",
               },

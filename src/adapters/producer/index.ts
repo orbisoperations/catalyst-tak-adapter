@@ -1,8 +1,7 @@
-import { CoT } from "@tak-ps/node-tak";
+import CoT, { Types } from "@tak-ps/node-cot";
 import { open, RootDatabase } from "lmdb";
 import { Config } from "../../config";
 import type { Static } from "@sinclair/typebox";
-import JSONCoT from "@tak-ps/node-cot/lib/types/types";
 import { Hono } from "hono";
 import { createYoga, createSchema } from "graphql-yoga";
 import { createRemoteJWKSet } from "jose";
@@ -12,7 +11,25 @@ import { readKeyAndCert } from "../../tak";
 import https from "node:https";
 import { verifyJwtWithRemoteJwks } from "../../auth/catalyst-jwt";
 
-type CoTMsg = Static<typeof JSONCoT>;
+type CoTMsg = Static<typeof Types.default>;
+
+/**
+ * Get the file name with {uid}_{filename}
+ * @param cot
+ * @returns
+ */
+function getFileName(cot: CoT) {
+  const fileshare = cot.detail().fileshare;
+  if (!fileshare) {
+    return;
+  }
+  const uid = cot.uid();
+  const filename = fileshare._attributes.filename;
+  if (filename) {
+    return `${uid}_${filename}`;
+  }
+  return `${uid}_${fileshare._attributes.name}`;
+}
 
 export class Producer {
   config: Config;
@@ -89,26 +106,17 @@ export class Producer {
     try {
       // handle fileshare
       const uid = cot.uid();
-      if (cot.to_geojson().properties.fileshare) {
-        console.log("CoT: ", cot.to_geojson().properties.fileshare);
-
-        if (cot.raw.event.point._attributes.hae === "NaN") {
-          console.log("HAE is NaN");
-          cot.raw.event.point._attributes.hae = "0";
-        }
-        if (cot.raw.event.point._attributes.ce === "NaN") {
-          console.log("CE is NaN");
-          cot.raw.event.point._attributes.ce = "0";
-        }
-        if (cot.raw.event.point._attributes.le === "NaN") {
-          console.log("LE is NaN");
-          cot.raw.event.point._attributes.le = "0";
-        }
-
-        // const filePath = await this.getFileFromTak(senderUrl, filename);
-        // const fileHash = await this.calculateFileHash(filePath)
+      console.log(`CoT received - UID: ${uid}, Type: ${cot.type()}`);
+      if (cot.detail().fileshare) {
+        console.log("🗂️  FileShare CoT detected!");
+        console.log(
+          "Full CoT:",
+          JSON.stringify(cot.detail().fileshare, null, 2),
+        );
+        // save the file to the .tak_download path
+        await this.getFileFromTak(cot);
       } else {
-        console.log("CoT: not a fileshare");
+        console.log("📄 Regular CoT (not a fileshare)");
       }
       await this.db.put(uid, cot.raw);
       console.log(`CoT (${uid}) : stored`);
@@ -117,26 +125,40 @@ export class Producer {
     }
   }
 
-  async getFileFromTak(senderUrl: string, filename: string) {
+  async getFileFromTak(cot: CoT) {
+    // validate if the cot contains valid fileshare information
+    const fileshare = cot.detail().fileshare;
+    if (!fileshare) {
+      console.error("No fileshare found");
+      return;
+    }
+    const senderUrl = fileshare._attributes.senderUrl;
     if (!senderUrl) {
       console.error("No senderUrl found");
       return;
     }
-
-    const filePath = path.join(this.downloadPath, filename);
+    const uniqueFileName = getFileName(cot);
+    if (!uniqueFileName) {
+      console.error("No unique file name found for cot: ", cot.uid());
+      return;
+    }
+    const filePath = path.join(this.downloadPath, uniqueFileName);
     const { key, cert } = readKeyAndCert(this.config);
-    let options = {
+    const options: https.RequestOptions = {
       key: key,
       cert: cert,
       rejectUnauthorized: false,
     };
-
-    options = { ...options, ...readKeyAndCert(this.config) };
     console.log("Sending Request");
     https
       .get(senderUrl, options, (res) => {
         if (res.statusCode !== 200) {
-          console.error("...");
+          console.error(
+            "Error downloading file: ",
+            res.statusCode,
+            res.statusMessage,
+          );
+          return;
         }
 
         if (!fs.existsSync(this.downloadPath)) {
@@ -163,8 +185,8 @@ export class Producer {
       });
   }
 
-  // Method to retrieve CoT from lmdb
-  getCoT(uid: string): CoTMsg | undefined {
+  // Method to retrieve CoT from LMDB
+  getCoT(uid: string): CoT | undefined {
     try {
       const cot = this.db.get(uid);
       if (!cot) {
@@ -172,7 +194,7 @@ export class Producer {
         return undefined;
       }
       console.log(`CoT (${uid}) : retrieved`);
-      return cot as Static<typeof JSONCoT>;
+      return new CoT(cot);
     } catch (error) {
       console.error("Error retrieving CoT from local database", error);
     }
@@ -213,18 +235,22 @@ export class Producer {
     }
     // Get the fileshare object from the CoT
     try {
-      const fileshare = cot.event.detail?.fileshare;
+      const fileshare = cot.detail().fileshare;
       if (!fileshare) {
         console.error(`CoT (${uid}) : no fileshare found`);
         return;
       }
-      const filename = fileshare._attributes.filename;
-      const filePath = path.join(this.downloadPath, filename);
+      const uniqueFileName = getFileName(cot);
+      if (!uniqueFileName) {
+        console.error(`CoT (${uid}) : no unique file name found`);
+        return;
+      }
+      const filePath = path.join(this.downloadPath, uniqueFileName);
       const content = fs.readFileSync(filePath).toString("base64");
       return {
-        uid: uid,
-        filename: filename,
-        content: content,
+        uid,
+        filename: uniqueFileName,
+        content,
       };
     } catch (error) {
       console.error("Error getting fileshare from CoT", error);
@@ -345,7 +371,7 @@ export class Producer {
             _sdl: String!
         }
 
-          type Mutation {
+        type Mutation {
             deleteCoT(uid: String!): Boolean
         }
     `;
@@ -381,9 +407,12 @@ export class Producer {
                         senderCallsign:
                           cot.event.detail?.__chat._attributes.senderCallsign,
                         chatGroup: {
-                          uid0: Object.entries(cot.event.detail?.__chat.chatgrp)
-                            .filter(([key]) => key !== "id")
-                            .map(([, value]) => value),
+                          uids:
+                            Object.entries(
+                              cot.event.detail?.__chat.chatgrp._attributes,
+                            )
+                              .filter(([key]) => key !== "id")
+                              .map((a) => a[1]) || [],
                           id: cot.event.detail?.__chat.chatgrp.id ?? "",
                         },
                       }
