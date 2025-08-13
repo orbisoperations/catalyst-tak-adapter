@@ -65,7 +65,6 @@ await takClient.init();
 
 takClient.start({
   onCoT: async (cot: CoT) => {
-    console.log("Received CoT: ");
     if (producer) {
       try {
         await producer.putCoT(cot);

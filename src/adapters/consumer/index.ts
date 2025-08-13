@@ -11,7 +11,6 @@ import TAK, { CoT } from "@tak-ps/node-tak";
 import * as ld from "lodash";
 import { open, RootDatabase } from "lmdb";
 import { createRTSPConnectionDetailItemPlugin } from "./consumer-plugins";
-import { CoTParser } from "@tak-ps/node-cot";
 
 interface CoTValues {
   uid?: string;
@@ -194,6 +193,7 @@ export class Consumer {
               _attributes: {
                 version: "2.0",
                 uid: `GeoChat.${senderUID}.${recipient}.${messageId}`,
+                // b-t-f is the type used for chat messages
                 type: cotValues?.type ?? "b-t-f",
                 how: cotValues?.how ?? "h-g-i-g-o",
                 time: new Date().toISOString(),
@@ -252,7 +252,6 @@ export class Consumer {
               },
             },
           });
-          console.log("cot", CoTParser.to_xml(cot));
           cots.push(cot);
         }
       }
@@ -458,6 +457,7 @@ export class Consumer {
   }
 
   publishCot(cots: CoT[], tak: TAK) {
+    console.log("LOG: Publishing CoTs to TAK");
     tak.write(cots);
   }
 
