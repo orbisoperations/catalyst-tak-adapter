@@ -20,8 +20,17 @@ export class TakClient {
   }
 
   async init() {
+    const takUrl = new URL(this.config.tak.endpoint);
+
+    console.log(
+      "Connecting to TAK Server ",
+      this.config.tak.endpoint,
+      " with protocol ",
+      takUrl.protocol,
+    );
+
     this.tak = await TAK.connect(
-      new URL(this.config.tak.endpoint),
+      takUrl,
       {
         ...readKeyAndCert(this.config),
         // rejectUnauthorized: true,
@@ -43,6 +52,8 @@ export class TakClient {
     }
     this.tak
       .on("cot", async (cot: CoT) => {
+        console.log("Received CoT from TAK Server: ", cot.to_xml());
+
         if (hooks.onCoT) {
           const pos = cot.position();
           cot.position([pos[0] ?? 0, pos[1] ?? 0, pos[2] ?? 0]);
@@ -56,7 +67,7 @@ export class TakClient {
         console.error(`Connection Timeout`);
       })
       .on("ping", async () => {
-        console.error(`TAK Server Ping`);
+        console.log(`TAK Server Ping`);
         if (hooks.onPing) {
           await hooks.onPing();
         }
