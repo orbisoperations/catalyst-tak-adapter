@@ -102,7 +102,7 @@ function generateCallsignHeartbeatCoT({
   group?: string;
   role?: string;
 }): CoT | null {
-  if (!lat || !lon) {
+  if (lat === undefined || lon === undefined) {
     console.error(
       "generateCallsignHeartbeatCoT: local heartbeat lat and lon are required. could not send Heartbeat",
     );
@@ -147,8 +147,8 @@ takClient.setInterval(
         callsign: "CATALYST-TAK-ADAPTER",
         type: "a-f-G-U-C-I",
         how: "m-g",
-        lat: config?.tak.catalyst_lat,
-        lon: config?.tak.catalyst_lon,
+        lat: config?.tak.catalyst_lat ?? 0.0,
+        lon: config?.tak.catalyst_lon ?? 0.0,
         group: config?.tak.group,
         role: config?.tak.role,
       });
