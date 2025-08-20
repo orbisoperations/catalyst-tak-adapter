@@ -288,21 +288,21 @@ describe("Producer", () => {
       const cot = resolverResult![0];
 
       // Validate required fields match TypeDef
-      expect(typeof cot.version).toBe("string");
-      expect(typeof cot.uid).toBe("string");
-      expect(typeof cot.type).toBe("string");
-      expect(typeof cot.how).toBe("string");
+      expect(typeof cot?.version).toBe("string");
+      expect(typeof cot?.uid).toBe("string");
+      expect(typeof cot?.type).toBe("string");
+      expect(typeof cot?.how).toBe("string");
 
       // Validate point structure
-      expect(typeof cot.point.lat).toBe("string");
-      expect(typeof cot.point.lon).toBe("string");
-      expect(typeof cot.point.hae).toBe("string");
+      expect(typeof cot?.point?.lat).toBe("string");
+      expect(typeof cot?.point?.lon).toBe("string");
+      expect(typeof cot?.point?.hae).toBe("string");
 
       // Validate detail structure
-      expect(typeof cot.detail.callsign).toBe("string");
-      expect(cot.detail.chat).toBeUndefined();
-      expect(cot.detail.fileshare).toBeUndefined();
-      expect(cot.detail.remarks).toBeUndefined();
+      expect(typeof cot?.detail?.callsign).toBe("string");
+      expect(cot?.detail?.chat).toBeUndefined();
+      expect(cot?.detail?.fileshare).toBeUndefined();
+      expect(cot?.detail?.remarks).toBeUndefined();
 
       await producer.closeDB();
     });
@@ -363,25 +363,25 @@ describe("Producer", () => {
       const cot = resolverResult![0];
 
       // Validate chat structure matches TypeDef
-      expect(cot.detail.chat).toBeDefined();
-      expect(typeof cot.detail.chat!.parent).toBe("string");
-      expect(typeof cot.detail.chat!.groupOwner).toBe("string");
-      expect(typeof cot.detail.chat!.messageId).toBe("string");
-      expect(typeof cot.detail.chat!.chatRoom).toBe("string");
-      expect(typeof cot.detail.chat!.id).toBe("string");
-      expect(typeof cot.detail.chat!.senderCallsign).toBe("string");
+      expect(cot?.detail?.chat).toBeDefined();
+      expect(typeof cot?.detail?.chat?.parent).toBe("string");
+      expect(typeof cot?.detail?.chat?.groupOwner).toBe("string");
+      expect(typeof cot?.detail?.chat?.messageId).toBe("string");
+      expect(typeof cot?.detail?.chat?.chatRoom).toBe("string");
+      expect(typeof cot?.detail?.chat?.id).toBe("string");
+      expect(typeof cot?.detail?.chat?.senderCallsign).toBe("string");
 
       // Validate chatGroup structure
-      expect(cot.detail.chat!.chatGroup).toBeDefined();
-      expect(Array.isArray(cot.detail.chat!.chatGroup.uids)).toBe(true);
-      expect(typeof cot.detail.chat!.chatGroup.id).toBe("string");
+      expect(cot?.detail?.chat?.chatGroup).toBeDefined();
+      expect(Array.isArray(cot?.detail?.chat?.chatGroup?.uids)).toBe(true);
+      expect(typeof cot?.detail?.chat?.chatGroup?.id).toBe("string");
 
       // Validate remarks structure
-      expect(cot.detail.remarks).toBeDefined();
-      expect(typeof cot.detail.remarks!.source).toBe("string");
-      expect(typeof cot.detail.remarks!.to).toBe("string");
-      expect(typeof cot.detail.remarks!.time).toBe("string");
-      expect(typeof cot.detail.remarks!.text).toBe("string");
+      expect(cot?.detail?.remarks).toBeDefined();
+      expect(typeof cot?.detail?.remarks?.source).toBe("string");
+      expect(typeof cot?.detail?.remarks?.to).toBe("string");
+      expect(typeof cot?.detail?.remarks?.time).toBe("string");
+      expect(typeof cot?.detail?.remarks?.text).toBe("string");
 
       await producer.closeDB();
     });
@@ -425,19 +425,19 @@ describe("Producer", () => {
       const cot = resolverResult![0];
 
       // Validate fileshare structure matches TypeDef
-      expect(cot.detail.fileshare).toBeDefined();
-      expect(typeof cot.detail.fileshare!.uid).toBe("string");
-      expect(typeof cot.detail.fileshare!.filename).toBe("string");
-      expect(typeof cot.detail.fileshare!.senderUid).toBe("string");
-      expect(typeof cot.detail.fileshare!.senderCallsign).toBe("string");
-      expect(typeof cot.detail.fileshare!.name).toBe("string");
+      expect(cot?.detail?.fileshare).toBeDefined();
+      expect(typeof cot?.detail?.fileshare?.uid).toBe("string");
+      expect(typeof cot?.detail?.fileshare?.filename).toBe("string");
+      expect(typeof cot?.detail?.fileshare?.senderUid).toBe("string");
+      expect(typeof cot?.detail?.fileshare?.senderCallsign).toBe("string");
+      expect(typeof cot?.detail?.fileshare?.name).toBe("string");
 
       // get the file
-      const file = producer.getFileShare(cot.detail.fileshare!.uid);
+      const file = producer.getFileShare(cot?.detail?.fileshare?.uid ?? "");
       expect(file).toBeDefined();
-      expect(file!.uid).toBe(cot.uid);
+      expect(file?.uid).toBe(cot?.uid ?? "");
       expect(file!.filename).toBe(
-        cot.uid + "_" + cot.detail.fileshare!.filename,
+        cot?.uid + "_" + cot?.detail?.fileshare?.filename,
       );
       expect(file!.content).toBe("Hello world. Mocked file content.");
 
@@ -481,11 +481,11 @@ describe("Producer", () => {
       const cot = resolverResult![0];
 
       // Validate remarks structure matches TypeDef
-      expect(cot.detail.remarks).toBeDefined();
-      expect(typeof cot.detail.remarks!.source).toBe("string");
-      expect(typeof cot.detail.remarks!.to).toBe("string");
-      expect(typeof cot.detail.remarks!.time).toBe("string");
-      expect(typeof cot.detail.remarks!.text).toBe("string");
+      expect(cot?.detail?.remarks).toBeDefined();
+      expect(typeof cot?.detail?.remarks?.source).toBe("string");
+      expect(typeof cot?.detail?.remarks?.to).toBe("string");
+      expect(typeof cot?.detail?.remarks?.time).toBe("string");
+      expect(typeof cot?.detail?.remarks?.text).toBe("string");
 
       await producer.closeDB();
     });
