@@ -6,10 +6,11 @@
     [X] we need to send the messages to the TAK server
  */
 
-import { Config, CoTOverwrite, CoTTransform } from "../../config";
-import TAK, { CoT } from "@tak-ps/node-tak";
-import * as ld from "lodash";
-import { open, RootDatabase } from "lmdb";
+import type { Config, CoTOverwrite, CoTTransform } from "../../config";
+import type TAK from "@tak-ps/node-tak";
+import { CoT } from "@tak-ps/node-tak";
+import ld from "lodash";
+import { open, type RootDatabase } from "lmdb";
 import { createRTSPConnectionDetailItemPlugin } from "./consumer-plugins";
 
 interface CoTValues {
@@ -341,7 +342,9 @@ export class Consumer {
               how: cotValues.how ?? "<NO-HOW>",
               time: new Date().toISOString(),
               start: new Date().toISOString(),
-              stale: new Date(Date.now() + this.poll_interval_ms).toISOString(),
+              stale: new Date(
+                Date.now() + this.poll_interval_ms + 1000,
+              ).toISOString(),
             },
             detail: {
               contact: {
@@ -457,7 +460,7 @@ export class Consumer {
   }
 
   publishCot(cots: CoT[], tak: TAK) {
-    console.log("LOG: Publishing CoTs to TAK");
+    console.log("publishing cots", cots, cots[0]?.raw.event.point._attributes);
     tak.write(cots);
   }
 
