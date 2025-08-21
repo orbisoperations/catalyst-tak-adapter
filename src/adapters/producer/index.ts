@@ -401,7 +401,8 @@ export class Producer {
                         groupOwner:
                           cot.event.detail?.__chat._attributes.groupOwner,
                         messageId:
-                          cot.event.detail?.__chat._attributes.messageId,
+                          cot.event.detail?.__chat._attributes.messageId ??
+                          cot.event._attributes.uid,
                         chatRoom: cot.event.detail?.__chat._attributes.chatroom,
                         id: cot.event.detail?.__chat._attributes.id,
                         senderCallsign:
