@@ -1,6 +1,7 @@
 import fs from "node:fs";
-import { Config } from "../config";
+import type { Config } from "../config";
 import TAK, { CoT } from "@tak-ps/node-tak";
+import { ExponentialBackoff } from "../utils";
 
 export function readKeyAndCert(config: Config) {
   // Read key and cert from file system
@@ -14,6 +15,10 @@ export class TakClient {
   tak?: TAK;
   config: Config;
   timers: Map<string, Timer>;
+  connected: boolean = false;
+  reconnecting: boolean = false;
+  private readonly _backoff: ExponentialBackoff = new ExponentialBackoff();
+
   constructor(config: Config) {
     this.config = config;
     this.timers = new Map<string, Timer>();
@@ -21,14 +26,12 @@ export class TakClient {
 
   async init() {
     const takUrl = new URL(this.config.tak.endpoint);
-
     console.log(
       "Connecting to TAK Server ",
       this.config.tak.endpoint,
       " with protocol ",
       takUrl.protocol,
     );
-
     this.tak = await TAK.connect(
       takUrl,
       {
@@ -39,6 +42,21 @@ export class TakClient {
         id: this.config.tak.connection_id || "ConnectionID",
       },
     );
+    this.tak
+      .on("end", async () => {
+        console.log(`TAKClient: Connection End`);
+        await this.reconnect();
+      })
+      .on("timeout", async () => {
+        console.error(`TAKClient: Connection Timeout`);
+        await this.reconnect();
+      })
+      .on("error", async (err: Error) => {
+        console.error(`TAKClient: Connection Error`, err);
+        await this.reconnect();
+      });
+
+    this.connected = true;
   }
 
   async start(hooks: {
@@ -52,28 +70,17 @@ export class TakClient {
     }
     this.tak
       .on("cot", async (cot: CoT) => {
-        console.log("Received CoT from TAK Server: ", cot.to_xml());
-
         if (hooks.onCoT) {
           const pos = cot.position();
           cot.position([pos[0] ?? 0, pos[1] ?? 0, pos[2] ?? 0]);
           await hooks.onCoT(cot);
         }
       })
-      .on("end", async () => {
-        console.error(`Connection End`);
-      })
-      .on("timeout", async () => {
-        console.error(`Connection Timeout`);
-      })
       .on("ping", async () => {
         console.log(`TAK Server Ping`);
         if (hooks.onPing) {
           await hooks.onPing();
         }
-      })
-      .on("error", async (err: Error) => {
-        console.error(`Connection Error`, err);
       });
   }
 
@@ -82,6 +89,67 @@ export class TakClient {
   }
 
   cancelInterval(name: string) {
+    clearInterval(this.timers.get(name)!);
     this.timers.get(name)?.unref();
+    this.timers.delete(name);
+  }
+
+  /**
+   * Reconnect to the TAK server
+   * If the connection is already disconnected, do nothing
+   * If the connection flag is set, reconnect.
+   */
+  async reconnect() {
+    if (this.connected) {
+      this.reconnecting = true;
+
+      // Wait for the backoff delay
+      await new Promise((resolve) =>
+        setTimeout(resolve, this.backoff.nextDelay()),
+      );
+
+      console.log(
+        `Reconnecting to TAK server, attempt ${this.backoff.getAttempts()}`,
+      );
+      // let tak handle the reconnect internally
+      // if not we would have to keep track of all the handlers and reinitialize them
+      // NOTE: this reconnect does not throw an error if it fails
+      //        what it does is that the tak client will emit an error event
+      //        and we will handle it in the error handler and keep retrying
+      //        be careful to not cause loops inside of this function
+      await this.tak?.reconnect();
+
+      return;
+    }
+
+    console.log(`TAK server was stopped, not reconnecting...`);
+    this.reconnecting = false;
+  }
+
+  get backoff() {
+    return this._backoff;
+  }
+
+  /**
+   * Stop the TAK server
+   * Set the disconnected flag to true
+   * Cleanup the timers and the connection
+   */
+  stop() {
+    this.connected = false;
+    this.reconnecting = false;
+    this.backoff.reset();
+    console.log(`TAKClient: Cleaning up TAK connection`);
+    this.timers.forEach((timer) => {
+      try {
+        clearInterval(timer);
+        timer.unref();
+      } catch (err) {
+        console.error(`Error unrefing timer`, err);
+      }
+    });
+    this.timers.clear();
+    this.tak?.removeAllListeners("cot");
+    this.tak?.removeAllListeners("ping");
   }
 }

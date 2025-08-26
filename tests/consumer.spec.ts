@@ -120,9 +120,9 @@ describe("Consumer", () => {
       callsignPath: "test-callsign",
       remarksPath: "test-remarks",
     };
-    const transform: CoTTransform =
-      mockConfig.consumer!.parser!.dataName.transform;
-    const result = consumer.extractCoTValues("dataName", object, transform);
+    const transform: CoTTransform | undefined =
+      mockConfig.consumer?.parser?.dataName?.transform;
+    const result = consumer.extractCoTValues("dataName", object, transform!);
     expect(result).toBeUndefined();
   });
 
