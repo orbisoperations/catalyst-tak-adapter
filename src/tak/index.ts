@@ -18,10 +18,12 @@ export class TakClient {
   connected: boolean = false;
   reconnecting: boolean = false;
   private readonly _backoff: ExponentialBackoff = new ExponentialBackoff();
+  private connectionIdOverride?: string;
 
-  constructor(config: Config) {
+  constructor(config: Config, opts?: { connectionId?: string }) {
     this.config = config;
     this.timers = new Map<string, Timer>();
+    this.connectionIdOverride = opts?.connectionId;
   }
 
   async init() {
@@ -39,7 +41,10 @@ export class TakClient {
         // rejectUnauthorized: true,
       },
       {
-        id: this.config.tak.connection_id || "ConnectionID",
+        id:
+          this.connectionIdOverride ||
+          this.config.tak.connection_id ||
+          "ConnectionID",
       },
     );
     this.tak
@@ -151,5 +156,18 @@ export class TakClient {
     this.timers.clear();
     this.tak?.removeAllListeners("cot");
     this.tak?.removeAllListeners("ping");
+    this.tak?.removeAllListeners("end");
+    this.tak?.removeAllListeners("timeout");
+    this.tak?.removeAllListeners("error");
+    try {
+      // attempt graceful shutdown if supported
+      // @ts-expect-error optional runtime methods
+      this.tak?.end?.();
+      // @ts-expect-error optional runtime methods
+      this.tak?.close?.();
+    } catch {
+      /* noop – not available in some runtimes */
+      console.error("TAKClient: end or close failed");
+    }
   }
 }
