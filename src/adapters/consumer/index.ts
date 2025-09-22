@@ -10,7 +10,7 @@ import type { Config, CoTOverwrite, CoTTransform } from "../../config";
 import type TAK from "@tak-ps/node-tak";
 import { CoT } from "@tak-ps/node-tak";
 import ld from "lodash";
-import { open, type RootDatabase } from "lmdb";
+import { DatabaseOptions, open, type RootDatabase } from "lmdb";
 import { createRTSPConnectionDetailItemPlugin } from "./consumer-plugins";
 
 interface CoTValues {
@@ -36,7 +36,7 @@ export class Consumer {
   poll_interval_ms: number;
   catalyst_endpoint: string;
   dbPath: string;
-  db: RootDatabase<string, string>;
+  db: RootDatabase<string, Uint8Array>;
 
   constructor(config: Config) {
     this.config = config;
@@ -68,9 +68,14 @@ export class Consumer {
   initDB() {
     try {
       console.log("Opening database");
-      return open<string, string>({
+      const opts: DatabaseOptions = {
+        keyEncoding: "binary",
+        encoding: "string",
+      };
+      return open<string, Uint8Array>({
         mapSize: 2 * 1024 * 1024 * 1024, // 2GB
         path: this.dbPath,
+        ...opts,
       });
     } catch (error) {
       console.error("Error opening database", error);
@@ -107,19 +112,37 @@ export class Consumer {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async jsonToGeoChat(json: any): Promise<CoT[]> {
-    if (!json || !json.data) {
+    if (!json || !json.data?.cots) {
       console.warn("Invalid JSON: ", json);
       return [];
     }
 
-    const data = json.data;
-    const chatParsers = this.config.consumer?.chat;
-    if (chatParsers === undefined) {
+    const chatJson = json?.data?.cots.filter(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (cot: any) => cot.type === "b-t-f",
+    );
+
+    if (chatJson.length === 0) {
+      console.warn("No chat messages found in JSON");
+      return [];
+    }
+
+    const chatParser = this.config.consumer?.chat?.cots?.transform;
+    if (chatParser === undefined) {
       console.warn(
         "no chat transforms have been found and unable to convert data to CoT",
       );
       return [];
     }
+
+    const messageVarsParser = this.config.consumer?.chat?.message_vars;
+    if (messageVarsParser === undefined) {
+      console.warn(
+        "no chat message vars have been found and unable to convert data to CoT",
+      );
+      return [];
+    }
+
     const cotsParser = this.config.consumer?.parser?.cots;
     if (cotsParser === undefined) {
       console.warn(
@@ -128,135 +151,138 @@ export class Consumer {
       return [];
     }
 
-    console.log("chat parsers", chatParsers);
+    if (this.config.consumer?.chat?.message_template === undefined) {
+      console.warn(
+        "no chat message template has been found and unable to convert data to CoT",
+      );
+      return [];
+    }
+
     const cots: CoT[] = [];
-    for (const [dataName, chatParser] of Object.entries(chatParsers ?? {})) {
-      if (data[dataName] === undefined) {
-        console.error("key not found to generate chats in data", dataName);
+
+    for (const chat of chatJson) {
+      // For each discrete chat, populate variables to fill the cot and message
+
+      // Populate variables for the general CoT variables
+      const cotVars: Map<string, string> = new Map();
+      for (const [key, value] of Object.entries(cotsParser?.transform)) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+        ld.get(chat, value)
+          ? cotVars.set(key, ld.get(chat, value))
+          : console.error("value not found for", key);
+      }
+
+      // Populate variables for the chat specific CoT variables
+      const chatCotVars: Map<string, string> = new Map();
+      for (const [key, value] of Object.entries(chatParser)) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+        ld.get(chat, value)
+          ? chatCotVars.set(key, ld.get(chat, value))
+          : console.error("value not found for", key, chat, value);
+      }
+
+      // Populate variables for the message text content itself
+      const msgVars: Map<string, string> = new Map();
+      for (const [key, value] of Object.entries(messageVarsParser)) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+        ld.get(chat, value)
+          ? msgVars.set(key, ld.get(chat, value))
+          : console.error("value not found for", key);
+      }
+
+      // build message
+      let message = this.config.consumer?.chat?.message_template;
+      for (const [key, value] of msgVars) {
+        message = message.replace(`{${key}}`, value);
+      }
+
+      if (chatCotVars.get("message_id") === undefined) {
+        console.error("message_id not found for chat cot");
+        continue;
+      }
+
+      const key = new TextEncoder().encode(chatCotVars.get("message_id"));
+      const existing = this.db.get(key);
+      if (existing && existing === message) {
+        console.log(
+          "message already sent and has not changed",
+          chatCotVars.get("message_id"),
+        );
+        continue;
       } else {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const dataToTransform = data[dataName] as any[];
-        console.log("dataToTransform", dataToTransform);
-        for (const dataElement of dataToTransform) {
-          if (!chatParser.message_id) {
-            console.error("message_id not found and cannot send for", dataName);
-            continue;
-          }
-          const messageId = ld.get(
-            dataElement,
-            chatParser.message_id,
-            undefined,
-          );
+        await this.db.put(key, message);
+      }
 
-          // build map of message variables
-          const msgVars: [string, string][] = [];
-          for (const [key, value] of Object.entries(chatParser.message_vars)) {
-            // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-            ld.get(dataElement, value)
-              ? msgVars.push([key, ld.get(dataElement, value)])
-              : console.error("value not found for", key);
-          }
-          // build message
-          let message = chatParser.message_template;
-          for (const [key, value] of msgVars) {
-            message = message.replace(`{${key}}`, value);
-          }
+      chatCotVars.set("recipient_uid", "ANDROID-a0d22135074572b9");
+      chatCotVars.set("message_id", crypto.randomUUID());
 
-          if (messageId === undefined) {
-            console.error("message_id not found for", dataName);
-            continue;
-          }
-
-          if (this.db.get(messageId) && this.db.get(messageId) === message) {
-            console.log("message already sent and has not changed", messageId);
-            continue;
-          } else {
-            await this.db.put(messageId, message);
-          }
-
-          const recipient = chatParser.recipient ?? "All Chat Rooms";
-          // build CoT
-          const cotValues = this.extractCoTValues(
-            dataName,
-            dataElement,
-            cotsParser?.transform,
-          );
-
-          const senderUID =
-            cotValues?.callsign ||
-            this.config?.consumer?.parser?.latestTelemetry?.overwrite
-              ?.callsign ||
-            this.config?.tak.callsign ||
-            "CATALYST-TAK-ADAPTER";
-
-          const cot = new CoT({
-            event: {
+      const cot = new CoT({
+        event: {
+          _attributes: {
+            version: "2.0",
+            uid: `GeoChat.${chatCotVars.get("sender_uid")}.${chatCotVars.get("recipient_uid")}.${chatCotVars.get("message_id")}`,
+            // b-t-f is the type used for chat messages
+            type: cotVars.get("type") ?? "b-t-f",
+            how: cotVars.get("how") ?? "m-g-i-g-o",
+            time: new Date().toISOString(),
+            start: new Date().toISOString(),
+            stale: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+            access: "Undefined",
+          },
+          point: {
+            _attributes: {
+              lat: Number(
+                cotVars.get("lat") ?? this.config.tak.catalyst_lat ?? -64.0107,
+              ),
+              lon: Number(
+                cotVars.get("lon") ?? this.config.tak.catalyst_lon ?? -59.452,
+              ),
+              hae: Number(cotVars.get("hae") ?? "999999.0"),
+              ce: "999999.0",
+              le: "999999.0",
+            },
+          },
+          detail: {
+            __chat: {
               _attributes: {
-                version: "2.0",
-                uid: `GeoChat.${senderUID}.${recipient}.${messageId}`,
-                // b-t-f is the type used for chat messages
-                type: cotValues?.type ?? "b-t-f",
-                how: cotValues?.how ?? "h-g-i-g-o",
-                time: new Date().toISOString(),
-                start: new Date().toISOString(),
-                stale: new Date(
-                  Date.now() + 7 * 24 * 60 * 60 * 1000,
-                ).toISOString(),
-                access: "Undefined",
+                senderCallsign: chatCotVars.get("sender_callsign"),
+                chatroom: "EVA",
+                id: chatCotVars.get("recipient_uid"),
+                messageId: chatCotVars.get("message_id"),
+                parent: "RootContactGroup",
+                groupOwner: "false",
               },
-              point: {
+              chatgrp: {
                 _attributes: {
-                  lat: Number(
-                    cotValues?.lat ?? this.config.tak.catalyst_lat ?? -64.0107,
-                  ),
-                  lon: Number(
-                    cotValues?.lon ?? this.config.tak.catalyst_lon ?? -59.452,
-                  ),
-                  hae: Number(cotValues?.hae ?? "999999.0"),
-                  ce: "999999.0",
-                  le: "999999.0",
-                },
-              },
-              detail: {
-                __chat: {
-                  _attributes: {
-                    senderCallsign: senderUID,
-                    chatroom: recipient,
-                    id: recipient,
-                    messageId: messageId,
-                    parent: "RootContactGroup",
-                    groupOwner: "false",
-                  },
-                  chatgrp: {
-                    _attributes: {
-                      id: recipient,
-                      uid0: senderUID,
-                      uid1: recipient,
-                    },
-                  },
-                },
-                remarks: {
-                  _attributes: {
-                    time: new Date().toISOString(),
-                    source: senderUID,
-                    to: recipient,
-                  },
-                  _text: message,
-                },
-                link: {
-                  _attributes: {
-                    relation: "p-p",
-                    type: "a-f-G-U-C-I",
-                    uid: senderUID,
-                  },
+                  id: chatCotVars.get("recipient_uid"),
+                  uid0: chatCotVars.get("sender_uid"),
+                  uid1: chatCotVars.get("recipient_uid"),
                 },
               },
             },
-          });
-          cots.push(cot);
-        }
-      }
+            remarks: {
+              _attributes: {
+                time: new Date().toISOString(),
+                source: chatCotVars.get("sender_uid"),
+                to: chatCotVars.get("recipient_uid"),
+              },
+              _text: message,
+            },
+            link: {
+              _attributes: {
+                relation: "p-p",
+                type: "a-f-G-U-C",
+                uid: chatCotVars.get("sender_uid"),
+              },
+            },
+          },
+        },
+      });
+      cots.push(cot);
     }
+
+    console.log("cots", cots);
+
     return cots;
   }
 
@@ -460,7 +486,7 @@ export class Consumer {
   }
 
   publishCot(cots: CoT[], tak: TAK) {
-    console.log("publishing cots", cots, cots[0]?.raw.event.point._attributes);
+    // console.log("publishing cots", cots, cots[0]?.raw.event.point._attributes);
     tak.write(cots);
   }
 
