@@ -1,5 +1,6 @@
 import * as realFs from "node:fs";
 import { expect, describe, it, afterEach, mock, afterAll } from "bun:test";
+import { CoTParser } from "@tak-ps/node-cot";
 
 // Mock fs module
 mock.module("node:fs", () => {
@@ -67,7 +68,6 @@ mock.module("node:https", () => {
 
 import { Config } from "../src/config";
 import { Producer } from "../src/adapters/producer";
-import { CoT } from "@tak-ps/node-tak";
 
 describe("Producer", () => {
   afterAll(() => {
@@ -102,7 +102,7 @@ describe("Producer", () => {
         catalyst_lon: 0,
       },
     };
-    const exampleCoT = new CoT(`
+    const exampleCoT = CoTParser.from_xml(`
             <event version="2.0" uid="a4f460" type="a-f-G-U-C" how="h-g-i-g-o" time="2024-10-16T19:52:25.747Z" start="2024-10-16T19:52:25.747Z" stale="2024-10-16T19:57:25.747Z">
                 <point lat="38.804169" lon="-76.136627" hae="1575" ce="999999.0" le="999999.0"/>
                 <detail>
@@ -194,7 +194,7 @@ describe("Producer", () => {
     // Basic CoT without chat, fileshare, or remarks
     const basicCoT = (() => {
       const { start, stale } = getCurrentTimestamps();
-      return new CoT(`
+      return CoTParser.from_xml(`
         <event version="2.0" uid="basic-test" type="a-f-G-U-C" how="h-g-i-g-o" time="${start}" start="${start}" stale="${stale}">
           <point lat="38.804169" lon="-76.136627" hae="1575" ce="999999.0" le="999999.0"/>
           <detail>
@@ -210,7 +210,7 @@ describe("Producer", () => {
     // Chat CoT
     const chatCoT = (() => {
       const { start, stale } = getCurrentTimestamps();
-      return new CoT(`
+      return CoTParser.from_xml(`
         <event version="2.0" uid="chat-test" type="b-t-f" how="h-g-i-g-o" time="${start}" start="${start}" stale="${stale}">
           <point lat="38.491979" lon="-121.526124" hae="-40.895" ce="4.5" le="9999999.0"/>
           <detail>
@@ -227,7 +227,7 @@ describe("Producer", () => {
     // Fileshare CoT
     const fileshareCoT = (() => {
       const { start, stale } = getCurrentTimestamps();
-      return new CoT(`
+      return CoTParser.from_xml(`
         <event version="2.0" uid="fileshare-test" type="b-f-t-r" how="h-e" time="${start}" start="${start}" stale="${stale}">
           <point lat="-58.90375561" lon="-123.15202048" hae="999999.0" ce="999999.0" le="999999.0"/>
           <detail>
@@ -241,7 +241,7 @@ describe("Producer", () => {
     // Remarks CoT
     const remarksCoT = (() => {
       const { start, stale } = getCurrentTimestamps();
-      return new CoT(`
+      return CoTParser.from_xml(`
         <event version="2.0" uid="remarks-test" type="b-m-p-s-m" how="h-g-i-g-o" time="${start}" start="${start}" stale="${stale}">
           <point lat="-1.9419843375972548" lon="-72.24609375" hae="999999.0" ce="999999.0" le="999999.0"/>
           <detail>
@@ -294,9 +294,9 @@ describe("Producer", () => {
       expect(typeof cot?.how).toBe("string");
 
       // Validate point structure
-      expect(typeof cot?.point?.lat).toBe("string");
-      expect(typeof cot?.point?.lon).toBe("string");
-      expect(typeof cot?.point?.hae).toBe("string");
+      expect(typeof cot?.point?.lat).toBe("number");
+      expect(typeof cot?.point?.lon).toBe("number");
+      expect(typeof cot?.point?.hae).toBe("number");
 
       // Validate detail structure
       expect(typeof cot?.detail?.callsign).toBe("string");
@@ -586,9 +586,9 @@ describe("Producer", () => {
         expect(typeof cot.uid).toBe("string");
         expect(typeof cot.type).toBe("string");
         expect(typeof cot.how).toBe("string");
-        expect(typeof cot.point.lat).toBe("string");
-        expect(typeof cot.point.lon).toBe("string");
-        expect(typeof cot.point.hae).toBe("string");
+        expect(typeof cot.point.lat).toBe("number");
+        expect(typeof cot.point.lon).toBe("number");
+        expect(typeof cot.point.hae).toBe("number");
         expect(typeof cot.detail.callsign).toBe("string");
       });
 

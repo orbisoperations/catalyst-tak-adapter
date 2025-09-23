@@ -8,7 +8,7 @@
 
 import type { Config, CoTOverwrite, CoTTransform } from "../../config";
 import type TAK from "@tak-ps/node-tak";
-import { CoT } from "@tak-ps/node-tak";
+import CoT from "@tak-ps/node-cot";
 import ld from "lodash";
 import { open, type RootDatabase } from "lmdb";
 import { createRTSPConnectionDetailItemPlugin } from "./consumer-plugins";

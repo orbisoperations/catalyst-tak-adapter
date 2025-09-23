@@ -22,8 +22,9 @@
   "dependencies": {
     "@anatine/zod-mock": "^3.14.0",
     "@faker-js/faker": "^9.9.0",
-    "@tak-ps/node-cot": "^12.37.0",
-    "@tak-ps/node-tak": "^9.3.2",
+    "@orbisoperations/catalyst-sdk": "^0.0.4",
+    "@tak-ps/node-cot": "^14.3.0",
+    "@tak-ps/node-tak": "^11.3.0",
     "graphql": "^16.11.0",
     "graphql-yoga": "^5.15.1",
     "hono": "^4.8.5",
