@@ -1,0 +1,4 @@
+runtime_security_config:
+  enabled: true
+  ebpfless:
+    enabled: true
