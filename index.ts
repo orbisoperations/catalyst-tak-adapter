@@ -1,5 +1,6 @@
-import TAK, { CoT } from "@tak-ps/node-tak";
-import { TakClient } from "./src/tak";
+import fs from "node:fs";
+import { CoT } from "@tak-ps/node-tak";
+import { TakClient } from "@orbisoperations/catalyst-sdk/clients";
 import { getConfig, Config } from "./src/config";
 import { Consumer } from "./src/adapters/consumer";
 import { Producer } from "./src/adapters/producer";
@@ -60,29 +61,38 @@ if (config.producer?.enabled) {
  * TAK Client Config and Startup
  */
 
-const takClient = new TakClient(config);
-await takClient.init();
+const takClient = new TakClient({
+  takServerUrl: config.tak.endpoint,
+  keyContent: fs.readFileSync(config.tak.key_file).toString(),
+  certContent: fs.readFileSync(config.tak.cert_file).toString(),
+  connectionId: config.tak.connection_id,
+  // Disable SSL certificate verification to match original implementation
+  // (original code had "rejectUnauthorized: true" commented out, defaulting to false)
+  // This allows self-signed certificates commonly used in TAK server deployments
+  rejectUnauthorized: false,
+});
+await takClient.connect();
 
-takClient.start({
-  onCoT: async (cot: CoT) => {
-    if (producer) {
-      try {
-        await producer.putCoT(cot);
-        console.log("CoT saved successfully");
-      } catch (e) {
-        console.error("Error saving CoT", e);
-      }
+takClient.on("cot", async (cot: CoT) => {
+  if (producer) {
+    try {
+      await producer.putCoT(cot);
+      console.log("CoT saved successfully");
+    } catch (e) {
+      console.error("Error saving CoT", e);
     }
-  },
-  onPing: async () => {
-    if (producer)
-      console.error(
-        "all messages: ",
-        producer
-          .getAllCoT()
-          ?.map((cot) => cot.event._attributes.uid + " " + JSON.stringify(cot)),
-      );
-  },
+  }
+});
+
+takClient.on("ping", async () => {
+  console.log(`TAK Server Ping`);
+  if (producer)
+    console.error(
+      "all messages: ",
+      producer
+        .getAllCoT()
+        ?.map((cot) => cot.event._attributes.uid + " " + JSON.stringify(cot)),
+    );
 });
 
 function generateCallsignHeartbeatCoT({
@@ -139,69 +149,54 @@ function generateCallsignHeartbeatCoT({
   );
 }
 
-takClient.setInterval(
-  "callsign",
-  (tak: TAK) => {
-    return async () => {
-      const cot = generateCallsignHeartbeatCoT({
-        callsign: "CATALYST-TAK-ADAPTER",
-        type: "a-f-G-U-C-I",
-        how: "m-g",
-        lat: config?.tak.catalyst_lat ?? 0.0,
-        lon: config?.tak.catalyst_lon ?? 0.0,
-        group: config?.tak.group,
-        role: config?.tak.role,
-      });
-      if (!cot) {
-        console.error("takClient.setInterval: No CoT to send");
-        return;
-      }
-      console.log(
-        "takClient.setInterval: SENDING LOCAL CALLSIGN",
-        cot.to_xml(),
-      );
-      try {
-        tak.write([cot]);
-      } catch (e) {
-        console.error("takClient.setInterval: Error sending CoT", e);
-      }
-    };
-  },
-  10 * 1000,
-);
+setInterval(async () => {
+  const cot = generateCallsignHeartbeatCoT({
+    callsign: "CATALYST-TAK-ADAPTER",
+    type: "a-f-G-U-C-I",
+    how: "m-g",
+    lat: config?.tak.catalyst_lat ?? 0.0,
+    lon: config?.tak.catalyst_lon ?? 0.0,
+    group: config?.tak.group,
+    role: config?.tak.role,
+  });
+  if (!cot) {
+    console.error("takClient.setInterval: No CoT to send");
+    return;
+  }
+  console.log("takClient.setInterval: SENDING LOCAL CALLSIGN", cot.to_xml());
+  try {
+    await takClient.client?.write([cot]);
+  } catch (e) {
+    console.error("takClient.setInterval: Error sending CoT", e);
+  }
+}, 10 * 1000);
 
 if (consumer) {
   console.log(
     "setting interval for consumer",
     config.consumer?.catalyst_query_poll_interval_ms,
   );
-  takClient.setInterval(
-    "consumer",
-    (tak: TAK) => {
-      return async () => {
-        console.log("LOG: Doing graphql query from consumer");
-        try {
-          const jsonResults = await consumer.doGraphqlQuery();
-          console.log("jsonResults", jsonResults);
-          if (!jsonResults?.data) {
-            console.log("No data returned from graphql query");
-            return;
-          }
-          const cots = consumer.jsonToCots(jsonResults);
-          if (cots.length === 0) {
-            console.log("No cots found by consumer");
-            return;
-          }
-          const msgCots = await consumer.jsonToGeoChat(jsonResults);
+  setInterval(async () => {
+    console.log("LOG: Doing graphql query from consumer");
+    try {
+      const jsonResults = await consumer.doGraphqlQuery();
+      console.log("jsonResults", jsonResults);
+      if (!jsonResults?.data) {
+        console.log("No data returned from graphql query");
+        return;
+      }
+      const cots = consumer.jsonToCots(jsonResults);
+      if (cots.length === 0) {
+        console.log("No cots found by consumer");
+        return;
+      }
+      const msgCots = await consumer.jsonToGeoChat(jsonResults);
 
-          consumer.publishCot([...cots, ...msgCots], tak);
-        } catch (e) {
-          console.error("Error doing graphql query from consumer", e);
-        }
-      };
-    },
-    config.consumer?.catalyst_query_poll_interval_ms || 1000,
-  );
+      consumer.publishCot([...cots, ...msgCots], takClient.client!);
+    } catch (e) {
+      console.error("Error doing graphql query from consumer", e);
+    }
+  }, config.consumer?.catalyst_query_poll_interval_ms || 1000);
 }
 
 if (producer) {

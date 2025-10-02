@@ -6,12 +6,19 @@ import { Hono } from "hono";
 import { createYoga, createSchema } from "graphql-yoga";
 import { createRemoteJWKSet } from "jose";
 import path from "node:path";
-import fs from "fs";
-import { readKeyAndCert } from "../../tak";
+import fs from "node:fs";
 import https from "node:https";
 import { verifyJwtWithRemoteJwks } from "../../auth/catalyst-jwt";
 
 type CoTMsg = Static<typeof Types.default>;
+
+function readKeyAndCert(config: Config) {
+  // Read key and cert from file system
+  return {
+    key: fs.readFileSync(config.tak.key_file).toString(),
+    cert: fs.readFileSync(config.tak.cert_file).toString(),
+  };
+}
 
 /**
  * Get the file name with {uid}_{filename}
