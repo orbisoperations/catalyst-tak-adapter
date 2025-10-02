@@ -126,14 +126,19 @@ const ConfigSchema = z.object({
         }),
       ),
       chat: z
-        .record(
-          z.object({
-            recipient: z.string(),
-            message_id: z.string(),
-            message_vars: z.record(z.string()),
-            message_template: z.string(),
+        .object({
+          message_template: z.string(),
+          message_vars: z.record(z.string()),
+          cots: z.object({
+            transform: z.object({
+              recipient_uid: z.string(),
+              sender_uid: z.string(),
+              sender_callsign: z.string(),
+              message_id: z.string(),
+              chatroom: z.string(),
+            }),
           }),
-        )
+        })
         .nullable(),
     })
     .optional(),
