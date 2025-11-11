@@ -33,7 +33,12 @@ export class TakClient {
       this.config.tak.endpoint,
       " with protocol ",
       takUrl.protocol,
+      " and connection id ",
+      this.connectionIdOverride ||
+        this.config.tak.connection_id ||
+        "ConnectionID",
     );
+
     this.tak = await TAK.connect(
       takUrl,
       {
@@ -47,6 +52,7 @@ export class TakClient {
           "ConnectionID",
       },
     );
+
     this.tak
       .on("end", async () => {
         console.log(`TAKClient: Connection End`);
@@ -105,30 +111,33 @@ export class TakClient {
    * If the connection flag is set, reconnect.
    */
   async reconnect() {
-    if (this.connected) {
-      this.reconnecting = true;
-
-      // Wait for the backoff delay
-      await new Promise((resolve) =>
-        setTimeout(resolve, this.backoff.nextDelay()),
-      );
-
-      console.log(
-        `Reconnecting to TAK server, attempt ${this.backoff.getAttempts()}`,
-      );
-      // let tak handle the reconnect internally
-      // if not we would have to keep track of all the handlers and reinitialize them
-      // NOTE: this reconnect does not throw an error if it fails
-      //        what it does is that the tak client will emit an error event
-      //        and we will handle it in the error handler and keep retrying
-      //        be careful to not cause loops inside of this function
-      await this.tak?.reconnect();
-
+    if (!this.connected) {
+      console.log("TAK client was stopped, not reconnecting...");
+      this.reconnecting = false;
       return;
     }
 
-    console.log(`TAK server was stopped, not reconnecting...`);
-    this.reconnecting = false;
+    this.reconnecting = true;
+    const delay = this.backoff.nextDelay();
+    await new Promise((r) => setTimeout(r, delay));
+
+    /* We might have been stopped while sleeping */
+    if (!this.connected) {
+      this.reconnecting = false;
+      return;
+    }
+
+    console.log(
+      `Reconnecting to TAK server, attempt ${this.backoff.getAttempts()}`,
+    );
+
+    // let tak handle the reconnect internally
+    // if not we would have to keep track of all the handlers and reinitialize them
+    // NOTE: this reconnect does not throw an error if it fails
+    //        what it does is that the tak client will emit an error event
+    //        and we will handle it in the error handler and keep retrying
+    //        be careful to not cause loops inside of this function
+    await this.tak?.reconnect();
   }
 
   get backoff() {
@@ -155,21 +164,17 @@ export class TakClient {
     });
     this.timers.clear();
     try {
-      // attempt graceful shutdown if supported
-      // @ts-expect-error optional runtime methods
-      this.tak?.end?.();
-      // @ts-expect-error optional runtime methods
-      this.tak?.close?.();
-
-      // Remove listeners after close to ensure call during cleanup
+      // Remove listeners after close to ensure call during cleanup      // Remove listeners after close to ensure call during cleanup
       this.tak?.removeAllListeners("cot");
       this.tak?.removeAllListeners("ping");
-      this.tak?.removeAllListeners("end");
-      this.tak?.removeAllListeners("timeout");
-      this.tak?.removeAllListeners("error");
+
+      this.tak?.destroy?.();
     } catch {
-      /* noop – not available in some runtimes */
       console.error("TAKClient: end or close failed");
     }
+
+    console.log(
+      `TAK client ${this.connectionIdOverride || this.config.tak.connection_id || "ConnectionID"} stopped.`,
+    );
   }
 }

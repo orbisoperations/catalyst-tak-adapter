@@ -4,6 +4,7 @@ import { TakClient } from "../src/tak";
 import type { Config } from "../src/config";
 import CoT from "@tak-ps/node-cot";
 import { EventEmitter } from "node:events";
+import { sleep } from "bun";
 
 const takConfig: Config = {
   dev: true,
@@ -46,37 +47,38 @@ MIIC/DCCAeSgAwIBAgIGAZjEgON9MA0GCSqGSIb3DQEBCwUAMD8xETAPBgNVBAMMCHRlc3QuY29tMQsw
  * @param timeout - The timeout in milliseconds
  * @returns The content of the event
  */
-function once<T>(
+export function once<T>(
   emitter: EventEmitter,
   event: string,
   name?: string,
-  timeout: number = 4500,
+  timeout = 4_500,
 ): Promise<{ content: T; duration_seconds: number }> {
-  // set a timeout of 10 seconds and fail the test if it times out
-  const timeoutRef = setInterval(() => {
-    console.log(`AsyncOnce: event:"${event}" name:"${name || ""}" timeout`);
-    clearInterval(timeoutRef);
-    throw new Error(`AsyncOnce: event:"${event}" name:"${name || ""}" timeout`);
-  }, timeout);
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
 
-  const start = Date.now();
-  return new Promise((resolve) => {
-    emitter.once(event, (content: T) => {
-      if (name) {
-        console.log(`AsyncOnce: event:"${event}" name: "${name}" resolved`);
-      } else {
-        console.log(`AsyncOnce: event:"${event}" resolved`);
-      }
-      clearInterval(timeoutRef);
-      const end = Date.now();
-      resolve({ content, duration_seconds: (end - start) / 1000 });
-    });
+    const timer = setTimeout(() => {
+      emitter.removeListener(event, handler); // cleanup listener
+      reject(
+        new Error(`AsyncOnce: event:"${event}" name:"${name ?? ""}" timeout`),
+      );
+    }, timeout);
+
+    const handler = (content: T) => {
+      clearTimeout(timer);
+      resolve({
+        content,
+        duration_seconds: (Date.now() - start) / 1000,
+      });
+    };
+
+    emitter.once(event, handler);
   });
 }
 
 type MockTakServerEvents = {
   cotData: [string];
   clientPing: [string];
+  clientDisconnected: [];
 };
 
 class MockTakServer extends EventEmitter<MockTakServerEvents> {
@@ -126,6 +128,8 @@ class MockTakServer extends EventEmitter<MockTakServerEvents> {
     });
     socket.on("close", () => {
       console.log("MockServer: end");
+      this.connections.splice(this.connections.indexOf(socket), 1);
+      this.emit("clientDisconnected");
     });
     socket.on("error", (err) => {
       console.log("MockServer: error", err);
@@ -209,12 +213,11 @@ describe("TAK Client", () => {
     await once(mockTakServer.tlsServer!, "secureConnection");
     expect(mockTakServer.connections.length).toBe(1);
 
-    // verify the connection is closed
-    await mockTakServer.close();
-    expect(mockTakServer.connections.length).toBe(0);
-
     // wait for the client to close
-    await once(takClient.tak!, "end", "TakClient End");
+    const endEvent = once(takClient.tak!, "end", "takClient Receives End");
+    mockTakServer.close();
+    await endEvent;
+    expect(mockTakServer.connections.length).toBe(0);
     expect(takClient.reconnecting).toBe(true);
 
     // restart the mock tak server and veerify if new connection is established
@@ -236,13 +239,80 @@ describe("TAK Client", () => {
     takClient.stop();
   });
 
+  it("should not attempt to reconnect if the TAK client is destroyed", async () => {
+    mockTakServer = new MockTakServer();
+    await mockTakServer.start();
+
+    takClient = new TakClient(takConfig);
+    await takClient.init();
+
+    expect(takClient.connected).toBe(true);
+    await once(mockTakServer.tlsServer!, "secureConnection");
+    expect(mockTakServer.connections.length).toBe(1);
+
+    const disconnectEvent = once(mockTakServer!, "clientDisconnected");
+    takClient.stop();
+    await disconnectEvent;
+
+    expect(takClient.connected).toBe(false);
+    expect(takClient.reconnecting).toBe(false);
+
+    await sleep(3000);
+
+    expect(takClient.backoff.getAttempts()).toBe(0);
+    expect(mockTakServer.connections.length).toBe(0);
+
+    await mockTakServer.close();
+  });
+
+  it("should attempt to reconnect if destroyed prior and reconnected", async () => {
+    mockTakServer = new MockTakServer();
+    await mockTakServer.start();
+
+    takClient = new TakClient(takConfig);
+    await takClient.init();
+
+    // Verify initial connection
+    await once(mockTakServer.tlsServer!, "secureConnection");
+    expect(mockTakServer.connections.length).toBe(1);
+    expect(takClient.connected).toBe(true);
+
+    // Intentionally kill the takClient
+    takClient.stop();
+
+    expect(takClient.connected).toBe(false);
+    expect(takClient.reconnecting).toBe(false);
+
+    // Reconnect the takClient
+    takClient = new TakClient(takConfig);
+    await takClient.init();
+
+    // Verify new connection
+    await once(mockTakServer.tlsServer!, "secureConnection");
+    expect(mockTakServer.connections.length).toBe(1);
+    expect(takClient.connected).toBe(true);
+
+    // wait for the client to close
+    const endEvent = once(takClient.tak!, "end", "takClient Receives End");
+    mockTakServer.close();
+    await endEvent;
+    expect(takClient.reconnecting).toBe(true);
+
+    // restart the mock tak server and veerify if new connection is established
+    mockTakServer.start();
+    await once(mockTakServer.tlsServer!, "secureConnection");
+    expect(mockTakServer.connections.length).toBe(1);
+  });
+
   it(
     "should fail if more than maxReconnects attempts are made",
     async () => {
+      // Unique connection id to avoid re-using old closed and stale connections
       takClient = new TakClient(takConfig);
       mockTakServer = new MockTakServer();
       await mockTakServer.start();
       await takClient.init();
+
       expect(takClient.connected).toBe(true);
 
       // send data to the mock tak server
@@ -259,15 +329,16 @@ describe("TAK Client", () => {
       // if passes the server is connected
       expect(cotData.content).toBe(cot.to_xml());
 
-      // close the mock tak server
-      await mockTakServer.close();
+      // Register event listener
+      const endEvent = once(takClient.tak!, "end", "takClient Receives End");
 
-      const endEvent = await once(
-        takClient.tak!,
-        "end",
-        "MockTAKServer Receives End",
-      );
-      expect(endEvent.duration_seconds).toBeCloseTo(0, 0.2);
+      // close the mock tak server
+      mockTakServer.close();
+
+      // wait for the client to detect the connection loss
+      const eventResult = await endEvent;
+
+      expect(eventResult.duration_seconds).toBeCloseTo(0, 0.2);
       const error1Event = await once(
         takClient.tak!,
         "error",
@@ -301,6 +372,7 @@ describe("TAK Client", () => {
   );
 
   it("should remove the cot and ping listeners when the client is stopped", async () => {
+    // Unique connection id to avoid re-using old closed and stale connections
     takClient = new TakClient(takConfig);
     await takClient.init();
 
