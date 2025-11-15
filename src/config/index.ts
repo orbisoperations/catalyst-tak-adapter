@@ -85,6 +85,7 @@ const CoTOverwriteSchema = z.object({
 });
 
 const ConfigSchema = z.object({
+  tak_server_ping_timeout_ms: z.number().default(120_000).optional(), // 2 minutes
   dev: z.boolean().default(false),
   tak: z.object({
     connection_id: z.string(),
