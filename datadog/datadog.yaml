@@ -1,4 +1,0 @@
-process_config:
-  enabled: "false"
-hostname_fqdn: true
-cloud_provider_metadata: []

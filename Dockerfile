@@ -1,5 +1,6 @@
 # Pull down image from Orbis GHCR and do a fly local only deploy
-FROM ghcr.io/orbisoperations/catalyst-adapter-base:0.1.0 AS base
+ARG BASE_VERSION="0.1.1"
+FROM ghcr.io/orbisoperations/catalyst-adapter-base:${BASE_VERSION} AS base
 
 LABEL fly_launch_runtime="Bun"
 

@@ -153,7 +153,7 @@ export class Producer {
       }
 
       const key = new TextEncoder().encode(uid);
-      console.log("Putting CoT in local database", uid);
+      // console.log("Putting CoT in local database", uid);
       await this.db.put(key, cot.raw);
     } catch (error) {
       console.error("Error storing CoT in local database", error);
@@ -319,9 +319,11 @@ export class Producer {
           value.event.detail?.fileshare === undefined
         ) {
           await this.db.remove(key);
+          /*
           console.log(
             `CoT (${new TextDecoder().decode(key)}) : stale and removed`,
           );
+          */
         }
       }
     } catch (error) {
