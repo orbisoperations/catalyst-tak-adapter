@@ -1,5 +1,5 @@
 import CoT, { Types } from "@tak-ps/node-cot";
-import { open, RootDatabase } from "lmdb";
+import { DatabaseOptions, open, RootDatabase } from "lmdb";
 import { Config } from "../../config";
 import type { Static } from "@sinclair/typebox";
 import { Hono } from "hono";
@@ -12,6 +12,11 @@ import https from "node:https";
 import { verifyJwtWithRemoteJwks } from "../../auth/catalyst-jwt";
 
 type CoTMsg = Static<typeof Types.default>;
+
+const INBOX_LMBD_DEFAULT_OPTIONS: DatabaseOptions = {
+  encoding: "json",
+  keyEncoding: "binary",
+} as const;
 
 /**
  * Get the file name with {uid}_{filename}
@@ -35,7 +40,7 @@ export class Producer {
   config: Config;
   dbPath: string;
   downloadPath: string;
-  db: RootDatabase<CoTMsg, string>;
+  db: RootDatabase<CoTMsg, Uint8Array>;
   graphqlPort: number;
   graphqlHost: string;
   jwksEndpoint: string;
@@ -43,6 +48,9 @@ export class Producer {
   jwks;
   mapSize: number;
   catalyst_jwt_issuer: string;
+
+  /** Interval that periodically removes stale CoTs from the DB */
+  private cleanupTimer?: Timer;
 
   constructor(config: Config) {
     if (!config.producer || !config.producer.enabled) {
@@ -67,6 +75,21 @@ export class Producer {
     this.appId = config.producer?.catalyst_app_id;
 
     this.jwks = createRemoteJWKSet(new URL(this.jwksEndpoint));
+
+    /* -------------------------------------------------------------
+     * Periodic cleanup of stale CoT records
+     * -----------------------------------------------------------*/
+    // Run every minute; not critical, so let the event-loop exit naturally.
+    this.cleanupTimer = setInterval(() => {
+      this.removeStaleCoTs().catch((err) =>
+        console.error("Error during stale CoT cleanup", err),
+      );
+    }, 60 * 1000);
+    try {
+      this.cleanupTimer.unref();
+    } catch {
+      /* noop – not available in some runtimes */
+    }
   }
 
   /**
@@ -75,9 +98,10 @@ export class Producer {
   initDB() {
     try {
       console.log("Opening database");
-      return open<CoTMsg, string>({
+      return open<CoTMsg, Uint8Array>({
         mapSize: this.mapSize,
         path: this.dbPath,
+        ...INBOX_LMBD_DEFAULT_OPTIONS,
       });
     } catch (error) {
       console.error("Error opening database", error);
@@ -104,22 +128,33 @@ export class Producer {
    */
   async putCoT(cot: CoT) {
     try {
+      /* -----------------------------------------------------------
+       * Skip CoTs that are already stale when we receive them
+       * ---------------------------------------------------------*/
+
+      /*
+        if (cot.is_stale()) {
+          return;
+        }
+      */
+
       // handle fileshare
       const uid = cot.uid();
-      console.log(`CoT received - UID: ${uid}, Type: ${cot.type()}`);
+
       if (cot.detail().fileshare) {
         console.log("🗂️  FileShare CoT detected!");
         console.log(
           "Full CoT:",
           JSON.stringify(cot.detail().fileshare, null, 2),
         );
+
         // save the file to the .tak_download path
         await this.getFileFromTak(cot);
-      } else {
-        console.log("📄 Regular CoT (not a fileshare)");
       }
-      await this.db.put(uid, cot.raw);
-      console.log(`CoT (${uid}) : stored`);
+
+      const key = new TextEncoder().encode(uid);
+      console.log("Putting CoT in local database", uid);
+      await this.db.put(key, cot.raw);
     } catch (error) {
       console.error("Error storing CoT in local database", error);
     }
@@ -188,7 +223,8 @@ export class Producer {
   // Method to retrieve CoT from LMDB
   getCoT(uid: string): CoT | undefined {
     try {
-      const cot = this.db.get(uid);
+      const key = new TextEncoder().encode(uid);
+      const cot = this.db.get(key);
       if (!cot) {
         console.error(`CoT (${uid}) : not found`);
         return undefined;
@@ -209,18 +245,9 @@ export class Producer {
    */
   getAllCoT(): CoTMsg[] | undefined {
     try {
-      const currentTime = new Date();
-      const cots = this.db
-        .getRange()
-        .filter(({ value }) => {
-          const staleTime = new Date(value.event._attributes.stale);
-          const staleTimePlus60Secs = new Date(staleTime.getTime() + 60 * 1000);
-          return staleTimePlus60Secs >= currentTime;
-          // return new Date(value.event._attributes.stale) >= currentTime;
-        })
-        .map(({ value }) => {
-          return value;
-        });
+      const cots = this.db.getRange().map(({ value }) => {
+        return value;
+      });
       return Array.from(cots);
     } catch (error) {
       console.error("Error retrieving all CoT from local database", error);
@@ -260,7 +287,8 @@ export class Producer {
   // Method to delete Cot from lmdb
   async deleteCoT(uid: string) {
     try {
-      const cot = await this.db.remove(uid);
+      const key = new TextEncoder().encode(uid);
+      const cot = await this.db.remove(key);
       if (!cot) {
         console.error(`CoT (${uid}) : not found`);
         return false;
@@ -271,6 +299,51 @@ export class Producer {
       console.error("Error deleting CoT from local database", error);
       return false;
     }
+  }
+
+  /**
+   * Iterate over all DB entries and remove those whose `stale` timestamp is
+   * further in the past than the configured grace period.
+   */
+  private async removeStaleCoTs(graceMs: number = 60 * 1000) {
+    const now = Date.now();
+    try {
+      for await (const { key, value } of this.db.getRange()) {
+        // value is raw JSON CoT; we rely on the same shape used elsewhere
+        const stale = new Date(value.event._attributes.stale).getTime();
+
+        // Don't remove fileshare CoTs
+        // But, if we do in the future, let's make sure to get rid of the file from the download path
+        if (
+          now > stale + graceMs &&
+          value.event.detail?.fileshare === undefined
+        ) {
+          await this.db.remove(key);
+          console.log(
+            `CoT (${new TextDecoder().decode(key)}) : stale and removed`,
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Error removing stale CoTs from local database", error);
+    }
+  }
+
+  /**
+   * Stop timers and close DB – call when shutting the Producer down.
+   */
+  async stop() {
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      try {
+        this.cleanupTimer.unref();
+      } catch {
+        /* noop – not available in some runtimes */
+        console.error("Producer: cleanupTimer unref failed");
+      }
+      this.cleanupTimer = undefined;
+    }
+    await this.closeDB();
   }
 
   // Function to check for stale CoT and remove db entries
@@ -381,67 +454,70 @@ export class Producer {
         Query: {
           hello: () => "Hello World!",
           cots: () => {
-            return this.getAllCoT()?.map((cot) => {
-              return {
-                version: cot.event._attributes.version,
-                uid: cot.event._attributes.uid,
-                type: cot.event._attributes.type,
-                how: cot.event._attributes.how,
-                point: {
-                  lat: cot.event.point._attributes.lat,
-                  lon: cot.event.point._attributes.lon,
-                  hae: cot.event.point._attributes.hae,
-                },
-                detail: {
-                  callsign:
-                    cot.event.detail?.contact?._attributes.callsign ?? "",
-                  chat: cot.event.detail?.__chat
-                    ? {
-                        parent: cot.event.detail?.__chat._attributes.parent,
-                        groupOwner:
-                          cot.event.detail?.__chat._attributes.groupOwner,
-                        messageId:
-                          cot.event.detail?.__chat._attributes.messageId ??
-                          cot.event._attributes.uid,
-                        chatRoom: cot.event.detail?.__chat._attributes.chatroom,
-                        id: cot.event.detail?.__chat._attributes.id,
-                        senderCallsign:
-                          cot.event.detail?.__chat._attributes.senderCallsign,
-                        chatGroup: {
-                          uids:
-                            Object.entries(
-                              cot.event.detail?.__chat.chatgrp._attributes,
-                            )
-                              .filter(([key]) => key !== "id")
-                              .map((a) => a[1]) || [],
-                          id: cot.event.detail?.__chat.chatgrp.id ?? "",
-                        },
-                      }
-                    : undefined,
-                  fileshare: cot.event.detail?.fileshare
-                    ? {
-                        uid: cot.event._attributes.uid,
-                        filename:
-                          cot.event.detail?.fileshare?._attributes.filename,
-                        senderUid:
-                          cot.event.detail?.fileshare?._attributes.senderUid,
-                        senderCallsign:
-                          cot.event.detail?.fileshare?._attributes
-                            .senderCallsign,
-                        name: cot.event.detail?.fileshare?._attributes.name,
-                      }
-                    : undefined,
-                  remarks: cot.event.detail?.remarks
-                    ? {
-                        source: cot.event.detail?.remarks._attributes?.source,
-                        to: cot.event.detail?.remarks._attributes?.to,
-                        time: cot.event.detail?.remarks._attributes?.time,
-                        text: cot.event.detail?.remarks._text,
-                      }
-                    : undefined,
-                },
-              };
-            });
+            return (
+              this.getAllCoT()?.map((cot) => {
+                return {
+                  version: cot.event._attributes.version,
+                  uid: cot.event._attributes.uid,
+                  type: cot.event._attributes.type,
+                  how: cot.event._attributes.how,
+                  point: {
+                    lat: cot.event.point._attributes.lat,
+                    lon: cot.event.point._attributes.lon,
+                    hae: cot.event.point._attributes.hae,
+                  },
+                  detail: {
+                    callsign:
+                      cot.event.detail?.contact?._attributes.callsign ?? "",
+                    chat: cot.event.detail?.__chat
+                      ? {
+                          parent: cot.event.detail?.__chat._attributes.parent,
+                          groupOwner:
+                            cot.event.detail?.__chat._attributes.groupOwner,
+                          messageId:
+                            cot.event.detail?.__chat._attributes.messageId ??
+                            cot.event._attributes.uid,
+                          chatRoom:
+                            cot.event.detail?.__chat._attributes.chatroom,
+                          id: cot.event.detail?.__chat._attributes.id,
+                          senderCallsign:
+                            cot.event.detail?.__chat._attributes.senderCallsign,
+                          chatGroup: {
+                            uids:
+                              Object.entries(
+                                cot.event.detail?.__chat.chatgrp._attributes,
+                              )
+                                .filter(([key]) => key !== "id")
+                                .map((a) => a[1]) || [],
+                            id: cot.event.detail?.__chat.chatgrp.id ?? "",
+                          },
+                        }
+                      : undefined,
+                    fileshare: cot.event.detail?.fileshare
+                      ? {
+                          uid: cot.event._attributes.uid,
+                          filename:
+                            cot.event.detail?.fileshare?._attributes.filename,
+                          senderUid:
+                            cot.event.detail?.fileshare?._attributes.senderUid,
+                          senderCallsign:
+                            cot.event.detail?.fileshare?._attributes
+                              .senderCallsign,
+                          name: cot.event.detail?.fileshare?._attributes.name,
+                        }
+                      : undefined,
+                    remarks: cot.event.detail?.remarks
+                      ? {
+                          source: cot.event.detail?.remarks._attributes?.source,
+                          to: cot.event.detail?.remarks._attributes?.to,
+                          time: cot.event.detail?.remarks._attributes?.time,
+                          text: cot.event.detail?.remarks._text,
+                        }
+                      : undefined,
+                  },
+                };
+              }) ?? []
+            );
           },
           downloadFile: (_, { uid }) => {
             return this.getFileShare(uid);

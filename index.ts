@@ -3,6 +3,7 @@ import { TakClient } from "./src/tak";
 import { getConfig, Config } from "./src/config";
 import { Consumer } from "./src/adapters/consumer";
 import { Producer } from "./src/adapters/producer";
+import ContactBook from "./src/modules/contact-book";
 
 /*
 TODO:
@@ -61,89 +62,40 @@ if (config.producer?.enabled) {
  */
 
 const takClient = new TakClient(config);
+// Track the last time we logged a ping so we only print once every 10 minutes
+let lastPingLogged = 0;
 await takClient.init();
+
+const contactBook = new ContactBook(config, producer);
 
 takClient.start({
   onCoT: async (cot: CoT) => {
     if (producer) {
       try {
         await producer.putCoT(cot);
-        console.log("CoT saved successfully");
       } catch (e) {
         console.error("Error saving CoT", e);
       }
     }
   },
   onPing: async () => {
-    if (producer)
-      console.error(
-        "all messages: ",
-        producer
-          .getAllCoT()
-          ?.map((cot) => cot.event._attributes.uid + " " + JSON.stringify(cot)),
-      );
+    const now = Date.now();
+    const TEN_MINUTES_MS = 10 * 60 * 1000;
+
+    if (now - lastPingLogged >= TEN_MINUTES_MS) {
+      console.log("Ping received via TAK client");
+      lastPingLogged = now;
+    }
   },
 });
-
-function generateCallsignHeartbeatCoT({
-  callsign = "CATALYST-TAK-ADAPTER",
-  type = "a-f-G-U-C-I",
-  how = "m-g",
-  lat,
-  lon,
-  group = "Cyan",
-  role = "Team Member",
-}: {
-  callsign?: string | number;
-  type?: string;
-  how?: string;
-  lat?: number;
-  lon?: number;
-  group?: string;
-  role?: string;
-}): CoT | null {
-  if (lat === undefined || lon === undefined) {
-    console.error(
-      "generateCallsignHeartbeatCoT: local heartbeat lat and lon are required. could not send Heartbeat",
-    );
-    return null;
-  }
-  const now = new Date();
-  const stale = new Date(now.getTime() + 5 * 60 * 1000);
-  let videoDetailItem: string | null = null;
-  if (config?.tak.video?.rtsp?.enabled) {
-    const RTSP_URL = config?.tak.video?.rtsp?.rtsp_server ?? "192.168.1.101";
-    const RTSP_PORT = config?.tak.video?.rtsp?.rtsp_port ?? "7428";
-    const RTSP_STREAM_PATH = config?.tak.video?.rtsp?.rtsp_path ?? "/stream";
-    videoDetailItem = `
-     <__video uid="${callsign}" url="rtsp://${RTSP_URL}:${RTSP_PORT}${RTSP_STREAM_PATH}" >
-        <ConnectionEntry networkTimeout="5000" uid="${callsign}" path="${RTSP_STREAM_PATH}"
-            protocol="rtsp" bufferTime="-1" address="${RTSP_URL}" port="${RTSP_PORT}"
-            roverPort="-1" rtspReliable="1" ignoreEmbbededKLV="false" alias="live/${callsign}" />
-    </__video>`;
-  }
-  return new CoT(
-    `<event version="2.0" uid="${callsign}" type="${type}" how="${how}" time="${now.toISOString()}" start="${now.toISOString()}" stale="${stale.toISOString()}">
-            <point lat="${lat}" lon="${lon}" hae="999999.0" ce="999999.0" le="999999.0"/>
-            <detail>
-                ${videoDetailItem ?? ""}
-                <contact callsign="${callsign}" endpoint="*:-1:stcp"/>
-                <__group name="${group}" role="${role}"/>
-                <takv device="Tak Adapter" platform="Catalyst" os="linux" version="0.0.1"/>
-                <link relation="p-p" type="a-f-G-U-C-I" uid="${callsign}"/>
-                <_flow-tags_>
-                    <NodeCoT-12.6.0>${now.toISOString()}</NodeCoT-12.6.0>
-                </_flow-tags_>
-            </detail>
-        </event>`,
-  );
-}
 
 takClient.setInterval(
   "callsign",
   (tak: TAK) => {
     return async () => {
-      const cot = generateCallsignHeartbeatCoT({
+      const now = new Date();
+
+      const cot = ContactBook.generateCallsignHeartbeatCoT({
         callsign: "CATALYST-TAK-ADAPTER",
         type: "a-f-G-U-C-I",
         how: "m-g",
@@ -151,7 +103,9 @@ takClient.setInterval(
         lon: config?.tak.catalyst_lon ?? 0.0,
         group: config?.tak.group,
         role: config?.tak.role,
+        stale: new Date(now.getTime() + 5 * 60 * 1000),
       });
+
       if (!cot) {
         console.error("takClient.setInterval: No CoT to send");
         return;
@@ -188,13 +142,63 @@ if (consumer) {
             return;
           }
           const cots = consumer.jsonToCots(jsonResults);
-          if (cots.length === 0) {
-            console.log("No cots found by consumer");
+
+          // Separate contact CoTs (type a-f-G-U-*)
+          const contactCots: CoT[] = [];
+          const otherCots: CoT[] = [];
+
+          // Sort cots for individual type-based processing
+          for (const cot of cots) {
+            const type = cot.type()?.toLowerCase();
+
+            if (type && type === "a-f-g-u") {
+              contactCots.push(cot);
+            } else {
+              otherCots.push(cot);
+            }
+          }
+
+          // Process each contact CoT
+          for (const cot of contactCots) {
+            try {
+              const now = new Date();
+              const [lat, lon] = cot.position();
+              /* eslint-disable  @typescript-eslint/no-explicit-any */
+              const detail: any = cot.detail();
+
+              await contactBook.addOrRefreshContact({
+                callsign: detail?.contact?._attributes?.callsign ?? cot.uid(),
+                type: cot.type() ?? "a-f-G-U-C-I",
+                /* eslint-disable  @typescript-eslint/no-explicit-any */
+                how: (cot as any).how?.() ?? "m-g", // fallback if method absent
+                lat: Number(lat ?? 0),
+                lon: Number(lon ?? 0),
+                group: detail?.__group?._attributes?.name ?? "Unknown",
+                role: detail?.__group?._attributes?.role ?? "Member",
+                stale: new Date(now.getTime() + 5 * 60 * 1000),
+              });
+            } catch (e) {
+              console.error("Error processing contact CoT", e);
+            }
+          }
+
+          if (otherCots.length === 0) {
+            console.log("No non-contact cots found by consumer");
             return;
           }
+
           const msgCots = await consumer.jsonToGeoChat(jsonResults);
 
-          consumer.publishCot([...cots, ...msgCots], tak);
+          for (const cot of msgCots) {
+            console.log(cot.detail()?.__chat?._attributes?.senderCallsign);
+
+            await contactBook.publishCoTAsContact(
+              cot.detail()?.__chat?._attributes?.senderCallsign ?? cot.uid(),
+              cot,
+            );
+          }
+
+          consumer.publishCot([...otherCots, ...msgCots], tak);
         } catch (e) {
           console.error("Error doing graphql query from consumer", e);
         }
