@@ -1,39 +1,36 @@
-# fly.toml app configuration file generated for catalyst-tak-adapter on 2025-06-05T20:16:39+08:00
-#
-# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
-#
-
-app = 'catalyst-tak-adapter'
-primary_region = 'ord'
+app = "tak-rz-consumer-producer"
+primary_region = "nrt"
 
 [build]
-  dockerfile = "Dockerfile"
+dockerfile = "Dockerfile"
 
 [env]
-  CONFIG_PATH = 'config.toml'
-  NODE_ENV = 'production'
-  DD_SERVICE = "catalyst-tak-adapter"
-  DD_TAGS = 'fly_app:catalyst-tak-adapter'
+CONFIG_PATH = "config.toml"
+DD_SERVICE = "tak-rz-consumer-producer"
+DD_TAGS = "fly_app:tak-rz-consumer-producer"
+NODE_ENV = "production"
 
 [[mounts]]
-  source = 'adapter_data_ord'
-  destination = '/data'
+destination = "/data"
+source = "adapter_data_ord"
 
 [[services]]
-  internal_port = 8125
-  processes = ["app"]
-  protocol = "udp"
+internal_port = 8_125
+processes = [ "app" ]
+protocol = "udp"
+
   [[services.ports]]
-    port = 8125
-    
+  port = 8_125
+
 [[services]]
-  internal_port = 8126
-  processes = ["app"]
-  protocol = "tcp"
+internal_port = 8_126
+processes = [ "app" ]
+protocol = "tcp"
+
   [[services.ports]]
-    port = "8126"
+  port = 8_126
 
 [[vm]]
-  memory = '2gb'
-  cpu_kind = 'shared'
-  cpus = 1
+cpu_kind = "performance"
+cpus = 2
+memory = "4gb"
