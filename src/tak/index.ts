@@ -15,6 +15,7 @@ export class TakClient {
   tak?: TAK;
   config: Config;
   timers: Map<string, Timer>;
+  pingTimeout: ReturnType<typeof setTimeout> | null = null;
   connected: boolean = false;
   reconnecting: boolean = false;
   private readonly _backoff: ExponentialBackoff = new ExponentialBackoff();
@@ -67,6 +68,13 @@ export class TakClient {
         await this.reconnect();
       });
 
+    this.pingTimeout = setTimeout(async () => {
+      console.log(
+        `TAKClient: Ping Timeout ${this.config.tak_server_ping_timeout_ms}ms. Reconnecting...`,
+      );
+      await this.reconnect();
+    }, this.config.tak_server_ping_timeout_ms ?? 120_000);
+
     this.connected = true;
   }
 
@@ -89,6 +97,19 @@ export class TakClient {
       })
       .on("ping", async () => {
         console.log(`TAK Server Ping`);
+
+        this.backoff.reset();
+
+        if (this.pingTimeout) {
+          clearTimeout(this.pingTimeout);
+          this.pingTimeout = setTimeout(async () => {
+            console.log(
+              `TAKClient: Ping Timeout ${this.config.tak_server_ping_timeout_ms}ms. Reconnecting...`,
+            );
+            await this.reconnect();
+          }, this.config.tak_server_ping_timeout_ms ?? 120_000);
+        }
+
         if (hooks.onPing) {
           await hooks.onPing();
         }
@@ -154,6 +175,11 @@ export class TakClient {
     this.reconnecting = false;
     this.backoff.reset();
     console.log(`TAKClient: Cleaning up TAK connection`);
+
+    if (this.pingTimeout) {
+      clearTimeout(this.pingTimeout);
+    }
+
     this.timers.forEach((timer) => {
       try {
         clearInterval(timer);
