@@ -140,6 +140,7 @@ const ConfigSchema = z.object({
             }),
           }),
         })
+        .optional()
         .nullable(),
     })
     .optional(),
