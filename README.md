@@ -33,7 +33,6 @@ You can use the following commands (via `bun run <command>` or `npm run <command
    ```
 
 2. Prepare required files:
-
    - **Configuration file** (`config.toml` or custom path)
    - TAK key and certificates in PEM format
    - Storage volume (optional)
@@ -63,15 +62,12 @@ You can use the following commands (via `bun run <command>` or `npm run <command
     - `FLY_SECRET_TAK_CERT_FILE`
     - `FLY_SECRET_TAK_ENDPOINT`
     - `FLY_SECRET_TAK_CONNECTION_ID`
-    - `FLY_SECRET_CONSUMER_CATALYST_TOKEN`
-    - `FLY_SECRET_CONSUMER_CATALYST_QUERY`
-    - `FLY_SECRET_PRODUCER_CATALYST_APP_ID`
+- Due to the nature of this adapter supporting multiple consumers, for now they must be configured directly inside the toml. There are plans for future support of secret-based configuration.
 - See [Configuration Guide](./docs/configuration/overview.md) for all options, defaults, and environment variables.
 
 ### Development Setup
 
 1. **Set up the TAK development server**
-
    - See [Development Guide](./docs/development/overview.md) for full instructions.
    - Clone the [CLOUD-RF Tak-Server repo](https://github.com/orbisoperations/tak-server) and follow the steps to download and set up the TAK server Docker image.
    - Get your local IP address (for Mac):
@@ -81,13 +77,11 @@ You can use the following commands (via `bun run <command>` or `npm run <command
    - Run the setup script and use your IP address (not localhost).
 
 2. **Configure browser certificates**
-
    - Use Firefox for development.
    - Import the `.p12` certificate into Firefox (Settings > Privacy & Security > Certificates).
    - Trust the CA for TAK.
 
 3. **Prepare adapter credentials**
-
    - Copy TAK user credentials into the adapter directory as `key.pem` and `cert.pem`.
    - Decrypt the user key if needed:
 
@@ -139,7 +133,6 @@ docker build \
    ```
 
 2. **Configure certificate files:**
-
    - Ensure your certificate files follow the naming convention:
      - Certificate: `*.cert.pem`
      - Key: `*.key.pem`

@@ -1,92 +1,136 @@
 # Consumer Configuration
 
-This section describes how to configure the Consumer component, which pulls data from Catalyst and forwards it to TAK.
+This document explains how to configure _consumer_ instances. A **consumer** polls the Catalyst GraphQL API at a configurable cadence, converts the returned data into TAK Cursor-on-Target (CoT) messages, and publishes those messages onto the adapter’s shared TAK connection.
 
-## Configuration Section
+---
 
-The Consumer configuration is defined in the `[consumer]` section of your TOML configuration file:
+## `[[consumers]]` section (array-of-tables)
+
+A configuration can contain **one _or many_ consumer blocks**. Each block follows the TOML _array-of-tables_ syntax (`[[consumers]]`).
 
 ```toml
-[consumer]
-catalyst_endpoint="https://gateway.catalyst.devintelops.io/graphql"
-catalyst_token="yourtokenhere"
-catalyst_query_poll_interval_ms = 10000
+[[consumers]]
+# — Core —
+enabled   = true                    # Mandatory – set false to disable without deleting the block
+name      = "aircraft-feed"          # Mandatory – unique identifier used in logs & timer labels
 
-catalyst_query= """
-query {
-  aircraftWithinDistance(lat: 38.937620, lon: -77.180400, dist: 50) {
-    hex
-    flight
-    lat
-    lon
-    alt_geom
+# Catalyst connection
+catalyst_endpoint  = "https://gateway.catalyst.devintelops.io/graphql"
+catalyst_token     = "$CATALYST_API_TOKEN"
+
+# GraphQL query
+catalyst_query = """
+query Aircraft($lat: Float!, $lon: Float!, $dist: Float!) {
+  aircraftWithinDistance(lat: $lat, lon: $lon, dist: $dist) {
+    hex flight lat lon alt_geom
   }
 }
 """
+# Optional – variables object injected into the query
+catalyst_query_variables = { lat = 38.93, lon = -77.18, dist = 50 }
+
+# Polling cadence (default: 1000 ms)
+catalyst_query_poll_interval_ms = 10_000
+
+# Local LMDB path (default: "./db/consumer/<name>")
+local_db_path = "./db/consumer/aircraft-feed"
+
+# ---------------------
+# Per-feed parsing rules
+# ---------------------
+[consumers.parser.aircraftWithinDistance.transform]
+uid       = "hex"
+type      = "\"a-f-A\""      # literal string – escapes needed inside TOML
+lat       = "lat"
+lon       = "lon"
+hae       = "alt_geom"
+how       = "\"h-g-i-g-o\""
+remarks   = "flight"
+
+[consumers.parser.aircraftWithinDistance.overwrite]
+# Optional static overrides
+# type = "a-f-A"
 ```
 
-## Configuration Options
+### Chat feed (optional)
 
-| Option | Required | Description | Default |
-|--------|----------|-------------|---------|
-| `catalyst_endpoint` | No | Catalyst GraphQL API endpoint | https://gateway.catalyst.devintelops.io/graphql |
-| `catalyst_token` | Yes | Authentication token for Catalyst API | None |
-| `catalyst_query` | Yes | GraphQL query for data retrieval | None |
-| `catalyst_query_poll_interval_ms` | No | Polling interval in milliseconds | 10000 |
+If a consumer must convert Catalyst chat messages into GeoChat CoTs, add a nested `[consumers.chat]` section:
 
-## Parser Configuration
-
-The parser configuration is defined in two optional sections:
-
-### Transform Configuration
-
-The transform configuration is used to map Catalyst data fields to TAK CoT fields and is defined in the `[consumer.parser.queryName.transform]` section.
 ```toml
-[consumer.parser.aircraftWithinDistance.transform]
-uid = "hex"
-lat = "lat"
-lon = "lon"
-hae = "alt_geom"
+[consumers.chat]
+message_template = "[{sender_callsign}] {text}"
+
+# Where to pull variables from the Catalyst JSON for the text template
+message_vars = { sender_callsign = "from", text = "body" }
+
+# How to build the CoT headers
+[consumers.chat.cots.transform]
+recipient_uid   = "recipient.uid"
+sender_uid      = "fromUid"
+sender_callsign = "from"
+message_id      = "id"
+chatroom        = "room"
 ```
 
+---
 
-### Overwrite Configuration
+## Field reference
 
-The overwrite configuration is used to apply static overrides to the TAK CoT fields and is defined in the `[consumer.parser.queryName.overwrite]` section.
+| Field                             | Type             | Required | Description                                                        | Default                |
+| --------------------------------- | ---------------- | -------- | ------------------------------------------------------------------ | ---------------------- |
+| `enabled`                         | bool             | yes      | Toggle this consumer on/off                                        | –                      |
+| `name`                            | string           | yes      | Unique identifier for logging & DB path                            | –                      |
+| `catalyst_endpoint`               | string           | yes      | Catalyst GraphQL endpoint                                          | –                      |
+| `catalyst_token`                  | string           | yes      | Bearer token for Catalyst                                          | –                      |
+| `catalyst_query`                  | multiline string | yes      | GraphQL query text                                                 | –                      |
+| `catalyst_query_variables`        | table            | no       | Variables object passed with the query                             | `{}`                   |
+| `catalyst_query_poll_interval_ms` | int              | no       | Polling interval (ms)                                              | `1000`                 |
+| `local_db_path`                   | string           | no       | Path to LMDB used for de-duplication                               | `./db/consumer/<name>` |
+| `[consumers.parser.*]`            | table(s)         | yes      | Map of _resultKey → transform / overwrite_ rules for non-chat CoTs | –                      |
+| `[consumers.chat]`                | table            | no       | Enables GeoChat processing                                         | –                      |
+
+---
+
+## Multi-consumer example
+
 ```toml
-[consumer.parser.aircraftWithinDistance.overwrite]
-type = "a-f-A"
+# Aircraft feed polling every 10 s
+[[consumers]]
+name      = "aircraft-feed"
+enabled   = true
+catalyst_endpoint  = "https://gateway.catalyst.devintelops.io/graphql"
+catalyst_token     = "$CATALYST_TOKEN_AIR"
+catalyst_query     = """ <query omitted> """
+catalyst_query_variables = { lat = 38.93, lon = -77.18, dist = 50 }
+catalyst_query_poll_interval_ms = 10_000
+
+[consumers.parser.aircraftWithinDistance.transform]
+uid = "hex" ; lat = "lat" ; lon = "lon" ; hae = "alt_geom"
+
+# Chat feed polling every 2 s
+[[consumers]]
+name      = "chat-feed"
+enabled   = true
+catalyst_endpoint  = "https://gateway.catalyst.devintelops.io/graphql"
+catalyst_token     = "$CATALYST_TOKEN_CHAT"
+catalyst_query     = """ <chat query> """
+catalyst_query_poll_interval_ms = 2000
+
+[consumers.chat]
+message_template = "[{sender_callsign}] {text}"
+message_vars     = { sender_callsign = "from", text = "body" }
+
+[consumers.chat.cots.transform]
+recipient_uid   = "recipient.uid"
+sender_uid      = "fromUid"
+sender_callsign = "from"
+message_id      = "id"
+chatroom        = "room"
 ```
 
-## Example Configurations
-
-### Basic Aircraft Tracking
-```toml
-[consumer]
-catalyst_endpoint="https://gateway.catalyst.devintelops.io/graphql"
-catalyst_token="your-token-here"
-catalyst_query="""
-query {
-  aircraftWithinDistance(lat: 38.937620, lon: -77.180400, dist: 50) {
-    hex
-    flight
-    lat
-    lon
-    alt_geom
-  }
-}
-"""
-
-[consumer.parser.aircraftWithinDistance.transform]
-uid = "hex"
-lat = "lat"
-lon = "lon"
-hae = "alt_geom"
-
-[consumer.parser.aircraftWithinDistance.overwrite]
-type = "a-f-A"
-```
+---
 
 ## See Also
+
 - [Parser Configuration](./parser-config.md)
 - [Producer Configuration](./producer-config.md)

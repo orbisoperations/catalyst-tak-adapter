@@ -6,7 +6,13 @@
     [X] we need to send the messages to the TAK server
  */
 
-import type { Config, CoTOverwrite, CoTTransform } from "../../config";
+import {
+  getConfig,
+  type ConsumerConfig,
+  type CoTOverwrite,
+  type CoTTransform,
+  type TakConfig,
+} from "../../config";
 import type TAK from "@tak-ps/node-tak";
 import { CoT } from "@tak-ps/node-tak";
 import ld from "lodash";
@@ -32,36 +38,36 @@ function toStr(
 }
 
 export class Consumer {
-  config: Config;
+  config: ConsumerConfig;
+  takConfig: TakConfig;
   poll_interval_ms: number;
   catalyst_endpoint: string;
   dbPath: string;
   db: RootDatabase<string, Uint8Array>;
 
-  constructor(config: Config) {
+  constructor(config: ConsumerConfig) {
     this.config = config;
-    this.dbPath = config.consumer?.local_db_path || "./db/consumer";
-    if (!this.config.consumer) {
-      throw new Error("Consumer config not found");
-    }
+    this.takConfig = getConfig().tak;
+    this.dbPath = config?.local_db_path || "./db/consumer";
     const missingEnvs = [];
-    if (!this.config.consumer.catalyst_endpoint) {
+
+    if (!this.config.catalyst_endpoint) {
       missingEnvs.push("Catalyst endpoint");
     }
-    if (!this.config.consumer.catalyst_query) {
+    if (!this.config.catalyst_query) {
       missingEnvs.push("Catalyst query");
     }
-    if (!this.config.consumer.catalyst_token) {
+    if (!this.config.catalyst_token) {
       missingEnvs.push("Catalyst token");
     }
     if (missingEnvs.length > 0) {
       throw new Error(
-        `Missing required environment variables: ${missingEnvs.join(", ")}`,
+        `Missing required environment variables: ${missingEnvs.join(", ")} for consumer ${this.config.name}`,
       );
     }
-    this.catalyst_endpoint = this.config.consumer.catalyst_endpoint;
+    this.catalyst_endpoint = this.config.catalyst_endpoint;
     this.poll_interval_ms =
-      this.config.consumer.catalyst_query_poll_interval_ms ?? 10 * 1000;
+      this.config.catalyst_query_poll_interval_ms ?? 10 * 1000;
     this.db = this.initDB();
   }
 
@@ -89,22 +95,19 @@ export class Consumer {
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
-        Authorization: "Bearer " + this.config.consumer!.catalyst_token,
+        Authorization: "Bearer " + this.config.catalyst_token,
       },
       body: JSON.stringify({
-        query: this.config.consumer!.catalyst_query,
-        variables: new Object(this.config.consumer!.catalyst_query_variables),
+        query: this.config.catalyst_query,
+        variables: new Object(this.config.catalyst_query_variables),
       }),
     });
     try {
       return await result.json();
     } catch (error) {
       console.error("Error parsing response", error);
-      console.error("query", this.config.consumer!.catalyst_query);
-      console.error(
-        "variables",
-        this.config.consumer!.catalyst_query_variables,
-      );
+      console.error("query", this.config.catalyst_query);
+      console.error("variables", this.config.catalyst_query_variables);
       console.error("response", result);
       return { data: {} };
     }
@@ -127,7 +130,7 @@ export class Consumer {
       return [];
     }
 
-    const chatParser = this.config.consumer?.chat?.cots?.transform;
+    const chatParser = this.config.chat?.cots?.transform;
     if (chatParser === undefined) {
       console.warn(
         "no chat transforms have been found and unable to convert data to CoT",
@@ -135,7 +138,7 @@ export class Consumer {
       return [];
     }
 
-    const messageVarsParser = this.config.consumer?.chat?.message_vars;
+    const messageVarsParser = this.config.chat?.message_vars;
     if (messageVarsParser === undefined) {
       console.warn(
         "no chat message vars have been found and unable to convert data to CoT",
@@ -143,7 +146,7 @@ export class Consumer {
       return [];
     }
 
-    const cotsParser = this.config.consumer?.parser?.cots;
+    const cotsParser = this.config.parser?.cots;
     if (cotsParser === undefined) {
       console.warn(
         "no cots transforms have been found and unable to convert data to CoT",
@@ -151,7 +154,7 @@ export class Consumer {
       return [];
     }
 
-    if (this.config.consumer?.chat?.message_template === undefined) {
+    if (this.config.chat?.message_template === undefined) {
       console.warn(
         "no chat message template has been found and unable to convert data to CoT",
       );
@@ -191,7 +194,7 @@ export class Consumer {
       }
 
       // build message
-      let message = this.config.consumer?.chat?.message_template;
+      let message = this.config.chat?.message_template;
       for (const [key, value] of msgVars) {
         message = message.replace(`{${key}}`, value);
       }
@@ -232,10 +235,10 @@ export class Consumer {
           point: {
             _attributes: {
               lat: Number(
-                cotVars.get("lat") ?? this.config.tak.catalyst_lat ?? -64.0107,
+                cotVars.get("lat") ?? this.takConfig.catalyst_lat ?? -64.0107,
               ),
               lon: Number(
-                cotVars.get("lon") ?? this.config.tak.catalyst_lon ?? -59.452,
+                cotVars.get("lon") ?? this.takConfig.catalyst_lon ?? -59.452,
               ),
               hae: Number(cotVars.get("hae") ?? "999999.0"),
               ce: "999999.0",
@@ -300,7 +303,7 @@ export class Consumer {
       return [];
     }
 
-    const parsers = this.config.consumer?.parser;
+    const parsers = this.config?.parser;
 
     if (parsers === undefined) {
       console.warn(
@@ -492,10 +495,10 @@ export class Consumer {
 
   createCotDetailItemPlugins(cotValues: CoTValues) {
     const cotDetailItemPlugins: object[] = [];
-    if (this.config.tak.video?.rtsp?.enabled) {
-      const RTSP_URL = this.config.tak.video.rtsp.rtsp_server;
-      const RTSP_PORT = this.config.tak.video.rtsp.rtsp_port;
-      const RTSP_STREAM_PATH = this.config.tak.video.rtsp.rtsp_path;
+    if (this.takConfig.video?.rtsp?.enabled) {
+      const RTSP_URL = this.takConfig.video.rtsp.rtsp_server;
+      const RTSP_PORT = this.takConfig.video.rtsp.rtsp_port;
+      const RTSP_STREAM_PATH = this.takConfig.video.rtsp.rtsp_path;
       cotDetailItemPlugins.push(
         createRTSPConnectionDetailItemPlugin(
           RTSP_URL,

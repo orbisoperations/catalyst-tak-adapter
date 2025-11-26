@@ -8,14 +8,6 @@ import { generateMock } from "@anatine/zod-mock";
 export const SecretConfigSchema = z
   .object({
     dev: z.boolean(),
-    consumer: z
-      .object({
-        enabled: z.boolean().optional(),
-        catalyst_token: z.string().optional(),
-        catalyst_query: z.string().optional(),
-        catalyst_query_poll_interval_ms: z.number().optional(),
-      })
-      .optional(),
     producer: z
       .object({
         enabled: z.boolean().optional(),
@@ -31,21 +23,6 @@ export type SecretConfig = z.input<typeof SecretConfigSchema>;
 function getSecrets(): SecretConfig {
   const secrets: SecretConfig = {
     dev: process.env.NODE_ENV === "development",
-    consumer: {
-      enabled: process.env.FLY_SECRET_CONSUMER_ENABLED
-        ? process.env.FLY_SECRET_CONSUMER_ENABLED === "true"
-        : undefined,
-      catalyst_token:
-        process.env.FLY_SECRET_CONSUMER_CATALYST_TOKEN ?? undefined,
-      catalyst_query:
-        process.env.FLY_SECRET_CONSUMER_CATALYST_QUERY ?? undefined,
-      catalyst_query_poll_interval_ms: process.env
-        .FLY_SECRET_CONSUMER_CATALYST_QUERY_POLL_INTERVAL_MS
-        ? Number(
-            process.env.FLY_SECRET_CONSUMER_CATALYST_QUERY_POLL_INTERVAL_MS,
-          )
-        : undefined,
-    },
     producer: {
       enabled: process.env.FLY_SECRET_PRODUCER_ENABLED
         ? process.env.FLY_SECRET_PRODUCER_ENABLED === "true"
@@ -84,66 +61,69 @@ const CoTOverwriteSchema = z.object({
   remarks: z.string().optional(),
 });
 
+const ConsumerConfigSchema = z.object({
+  enabled: z.boolean(),
+  name: z.string(), // For tracing and timer tracking purposes
+  catalyst_endpoint: z.string(),
+  catalyst_token: z.string(),
+  catalyst_query: z.string(),
+  catalyst_query_variables: z.record(z.any()),
+  catalyst_query_poll_interval_ms: z.number(),
+  local_db_path: z.string().default("./db/consumer"),
+  parser: z.record(
+    z.object({
+      transform: CoTTransformSchema,
+      overwrite: CoTOverwriteSchema.optional(),
+    }),
+  ),
+  chat: z
+    .object({
+      message_template: z.string(),
+      message_vars: z.record(z.string()),
+      cots: z.object({
+        transform: z.object({
+          recipient_uid: z.string(),
+          sender_uid: z.string(),
+          sender_callsign: z.string(),
+          message_id: z.string(),
+          chatroom: z.string(),
+        }),
+      }),
+    })
+    .optional()
+    .nullable(),
+});
+
+const TakConfigSchema = z.object({
+  connection_id: z.string(),
+  endpoint: z.string(),
+  key_file: z.string(),
+  cert_file: z.string(),
+  callsign: z.string(),
+  catalyst_lat: z.number().optional(),
+  catalyst_lon: z.number().optional(),
+  group: z.string(),
+  role: z.string(),
+  video: z
+    .object({
+      rtsp: z
+        .object({
+          enabled: z.boolean(),
+          rtsp_server: z.string(),
+          rtsp_port: z.string(),
+          rtsp_path: z.string(),
+        })
+        .optional(),
+    })
+    .optional()
+    .default({}),
+});
+
 const ConfigSchema = z.object({
   tak_server_ping_timeout_ms: z.number().default(120_000).optional(), // 2 minutes
   dev: z.boolean().default(false),
-  tak: z.object({
-    connection_id: z.string(),
-    endpoint: z.string(),
-    key_file: z.string(),
-    cert_file: z.string(),
-    callsign: z.string(),
-    catalyst_lat: z.number().optional(),
-    catalyst_lon: z.number().optional(),
-    group: z.string(),
-    role: z.string(),
-    video: z
-      .object({
-        rtsp: z
-          .object({
-            enabled: z.boolean(),
-            rtsp_server: z.string(),
-            rtsp_port: z.string(),
-            rtsp_path: z.string(),
-          })
-          .optional(),
-      })
-      .optional()
-      .default({}),
-  }),
-  consumer: z
-    .object({
-      enabled: z.boolean(),
-      catalyst_endpoint: z.string(),
-      catalyst_token: z.string(),
-      catalyst_query: z.string(),
-      catalyst_query_variables: z.record(z.any()),
-      catalyst_query_poll_interval_ms: z.number(),
-      local_db_path: z.string().default("./db/consumer"),
-      parser: z.record(
-        z.object({
-          transform: CoTTransformSchema,
-          overwrite: CoTOverwriteSchema.optional(),
-        }),
-      ),
-      chat: z
-        .object({
-          message_template: z.string(),
-          message_vars: z.record(z.string()),
-          cots: z.object({
-            transform: z.object({
-              recipient_uid: z.string(),
-              sender_uid: z.string(),
-              sender_callsign: z.string(),
-              message_id: z.string(),
-              chatroom: z.string(),
-            }),
-          }),
-        })
-        .optional()
-        .nullable(),
-    })
-    .optional(),
+  tak: TakConfigSchema,
+  consumers: z.array(ConsumerConfigSchema).optional(),
   producer: z
     .discriminatedUnion("enabled", [
       z.object({
@@ -163,6 +143,8 @@ const ConfigSchema = z.object({
     .optional(),
 });
 
+export type ConsumerConfig = z.infer<typeof ConsumerConfigSchema>;
+export type TakConfig = z.infer<typeof TakConfigSchema>;
 export type Config = z.infer<typeof ConfigSchema>;
 export type CoTTransform = z.infer<typeof CoTTransformSchema>;
 export type CoTOverwrite = z.infer<typeof CoTOverwriteSchema>;
@@ -182,16 +164,6 @@ export function getConfig(): Config {
   }
 
   const validatedConfig: Config = parsedConfig.data;
-
-  if (validatedConfig.consumer?.enabled) {
-    if (!validatedConfig.consumer?.catalyst_query) {
-      // if the query is empty, maybe because of the secrets.catalyst_query being set empty
-      // so we need to set the query to the query in the toml config
-      validatedConfig.consumer.catalyst_query =
-        // @ts-expect-error-ignore: if the consumer is enabled, the catalyst_query is required
-        tomlConfig.consumer.catalyst_query as string;
-    }
-  }
 
   if (process.env.NODE_ENV !== "development") {
     console.log("[CONFIG] NODE_ENV is not development, setting dev to false");

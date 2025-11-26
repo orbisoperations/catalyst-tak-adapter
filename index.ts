@@ -5,25 +5,6 @@ import { Consumer } from "./src/adapters/consumer";
 import { Producer } from "./src/adapters/producer";
 import ContactBook from "./src/modules/contact-book";
 
-/*
-TODO:
-[X] export configs as toml (not envs)
-[] TAK as a data source
-    [X] find local db store to use (and install it)
-        [X] could be something like KV that uses UID as the key
-        [] some sort of event loop to clear stale objects
-    [X] capture and parse CoT for storage
-    [X] create graphql schema for CoT
-    [X] expose the endpoint to catalyst
-    [X] key validation from catalyst (JWT)
-    [X] return appropriate data for the query
-[X] TAK as a consumer
-    [X] we need a scheduling mechanism to send data to TAK
-    [X] we need a graphlq to query against Catalyst
-    [X] we need a way to convert catalyst data to CoT
-    [X] we need to send the messages to the TAK server
- */
-
 let config: Config | undefined = undefined;
 while (config === undefined) {
   try {
@@ -34,18 +15,24 @@ while (config === undefined) {
   }
 }
 
-if (!config.producer?.enabled && !config.consumer?.enabled) {
+if (
+  !config.producer?.enabled &&
+  !config.consumers?.find((consumer) => consumer.enabled)
+) {
   console.error("at least one of producer or consumer must be enabled");
   process.exit(1);
 }
 
-let consumer: Consumer | undefined = undefined;
+const consumers: Consumer[] = [];
 let producer: Producer | undefined = undefined;
-if (config.consumer?.enabled) {
-  try {
-    consumer = new Consumer(config);
-  } catch (e) {
-    console.error("Error instantiating consumer", e);
+
+for (const consumer of config.consumers ?? []) {
+  if (consumer.enabled) {
+    try {
+      consumers.push(new Consumer(consumer));
+    } catch (e) {
+      console.error("Error instantiating consumer", e);
+    }
   }
 }
 
@@ -124,21 +111,28 @@ takClient.setInterval(
   10 * 1000,
 );
 
-if (consumer) {
+for (const consumer of consumers) {
   console.log(
-    "setting interval for consumer",
-    config.consumer?.catalyst_query_poll_interval_ms,
+    `setting interval for consumer ${consumer.config.name}`,
+    consumer.config.catalyst_query_poll_interval_ms,
   );
   takClient.setInterval(
-    "consumer",
+    `consumer-${consumer.config.name}`,
     (tak: TAK) => {
       return async () => {
-        console.log("LOG: Doing graphql query from consumer");
+        console.log(
+          `LOG: Doing graphql query from consumer ${consumer.config.name}`,
+        );
         try {
           const jsonResults = await consumer.doGraphqlQuery();
-          console.log("jsonResults", jsonResults);
+          console.log(
+            `jsonResults from consumer ${consumer.config.name}`,
+            jsonResults,
+          );
           if (!jsonResults?.data) {
-            console.log("No data returned from graphql query");
+            console.log(
+              `No data returned from graphql query from consumer ${consumer.config.name}`,
+            );
             return;
           }
           const cots = consumer.jsonToCots(jsonResults);
@@ -204,7 +198,7 @@ if (consumer) {
         }
       };
     },
-    config.consumer?.catalyst_query_poll_interval_ms || 1000,
+    consumer.config.catalyst_query_poll_interval_ms || 1000,
   );
 }
 

@@ -11,34 +11,36 @@ describe("Consumer", () => {
   // @ts-expect-error: This is a mock config, missing fields are intentional
   const mockConfig: Config = {
     dev: true,
-    consumer: {
-      enabled: true,
-      catalyst_query_variables: {},
-      local_db_path: ".tak_downloads",
-      chat: {},
-      catalyst_endpoint: "https://gateway.catalyst.devintelops.io/graphql",
-      catalyst_query: "{ query }",
-      catalyst_token: "test-token",
-      catalyst_query_poll_interval_ms: 10000,
-      parser: {
-        dataName: {
-          transform: {
-            uid: "uid",
-            type: "type",
-            lat: "point.lat",
-            lon: "point.lon",
-            hae: "point.hae",
-            how: "how",
-            callsign: "detail.callsign",
-            remarks: "details.remarks.text",
+    consumers: [
+      {
+        name: "test-consumer-1",
+        enabled: true,
+        catalyst_query_variables: {},
+        local_db_path: ".tak_downloads",
+        catalyst_endpoint: "https://gateway.catalyst.devintelops.io/graphql",
+        catalyst_query: "{ query }",
+        catalyst_token: "test-token",
+        catalyst_query_poll_interval_ms: 10000,
+        parser: {
+          dataName: {
+            transform: {
+              uid: "uid",
+              type: "type",
+              lat: "point.lat",
+              lon: "point.lon",
+              hae: "point.hae",
+              how: "how",
+              callsign: "detail.callsign",
+              remarks: "details.remarks.text",
+            },
           },
         },
       },
-    },
+    ],
   };
 
   beforeEach(() => {
-    consumer = new Consumer(mockConfig);
+    consumer = new Consumer(mockConfig.consumers![0]!);
   });
 
   it("extracts CoT values correctly", () => {
@@ -121,7 +123,7 @@ describe("Consumer", () => {
       remarksPath: "test-remarks",
     };
     const transform: CoTTransform | undefined =
-      mockConfig.consumer?.parser?.dataName?.transform;
+      mockConfig.consumers![0]?.parser?.dataName?.transform;
     const result = consumer.extractCoTValues("dataName", object, transform!);
     expect(result).toBeUndefined();
   });
