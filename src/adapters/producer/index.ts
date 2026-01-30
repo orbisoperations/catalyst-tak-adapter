@@ -79,12 +79,15 @@ export class Producer {
     /* -------------------------------------------------------------
      * Periodic cleanup of stale CoT records
      * -----------------------------------------------------------*/
-    // Run every minute; not critical, so let the event-loop exit naturally.
-    this.cleanupTimer = setInterval(() => {
-      this.removeStaleCoTs().catch((err) =>
-        console.error("Error during stale CoT cleanup", err),
-      );
-    }, 60 * 1000);
+    // Run every five minutes; not critical, but intensive
+    this.cleanupTimer = setInterval(
+      () => {
+        this.removeStaleCoTs().catch((err) =>
+          console.error("Error during stale CoT cleanup", err),
+        );
+      },
+      60 * 1000 * 5,
+    );
     try {
       this.cleanupTimer.unref();
     } catch {
@@ -304,8 +307,11 @@ export class Producer {
   /**
    * Iterate over all DB entries and remove those whose `stale` timestamp is
    * further in the past than the configured grace period.
+   * NOTE: This process is intensive and should be run somewhat sparingly.
    */
   private async removeStaleCoTs(graceMs: number = 60 * 1000) {
+    console.log("Producer: Removing stale CoTs from local database");
+
     const now = Date.now();
     try {
       for await (const { key, value } of this.db.getRange()) {
