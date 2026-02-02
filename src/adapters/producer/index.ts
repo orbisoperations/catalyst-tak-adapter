@@ -48,6 +48,12 @@ export class Producer {
   jwks;
   mapSize: number;
   catalyst_jwt_issuer: string;
+  private cachedCots: ReturnType<Producer["mapCotsForGraphql"]> | null = null;
+  private cachedCotsAt = 0;
+  private cachedCotsPromise: Promise<
+    ReturnType<Producer["mapCotsForGraphql"]>
+  > | null = null;
+  private readonly cotsCacheTtlMs = 15 * 1000;
 
   /** Interval that periodically removes stale CoTs from the DB */
   private cleanupTimer?: Timer;
@@ -66,6 +72,7 @@ export class Producer {
     this.db = this.initDB();
     this.graphqlHost = config.producer?.graphql_host || "0.0.0.0";
     this.graphqlPort = config.producer?.graphql_port || 8080;
+    this.cotsCacheTtlMs = config.producer?.cots_cache_ttl_ms || 15 * 1000;
     this.jwksEndpoint =
       config.producer?.catalyst_jwks_url ||
       "https://gateway.catalyst.devintelops.io/.well-known/jwks.json";
@@ -241,8 +248,6 @@ export class Producer {
 
   /**
    * Method to retrieve all CoT (Cursor on Target) messages from the local database.
-   * Filters the messages to include only those where the stale time plus 60 seconds
-   * is greater than or equal to the current time.
    *
    * @returns {CoTMsg[] | undefined} An array of CoT messages or undefined if an error occurs.
    */
@@ -446,7 +451,7 @@ export class Producer {
 
         type Query {
             hello: String!
-            cots: [CoT]!
+            cots(forceRefresh: Boolean): [CoT]!
             cotWitinRadius(lat: Float!, lon: Float!, radius: Float!): [CoT]!
             downloadFile(uid: String!): File!
             _sdl: String!
@@ -461,71 +466,8 @@ export class Producer {
       resolvers: {
         Query: {
           hello: () => "Hello World!",
-          cots: () => {
-            return (
-              this.getAllCoT()?.map((cot) => {
-                return {
-                  version: cot.event._attributes.version,
-                  uid: cot.event._attributes.uid,
-                  type: cot.event._attributes.type,
-                  how: cot.event._attributes.how ?? "m-g",
-                  point: {
-                    lat: cot.event.point._attributes.lat,
-                    lon: cot.event.point._attributes.lon,
-                    hae: cot.event.point._attributes.hae,
-                  },
-                  detail: {
-                    callsign:
-                      cot.event.detail?.contact?._attributes.callsign ?? "",
-                    chat: cot.event.detail?.__chat
-                      ? {
-                          parent: cot.event.detail?.__chat._attributes.parent,
-                          groupOwner:
-                            cot.event.detail?.__chat._attributes.groupOwner,
-                          messageId:
-                            cot.event.detail?.__chat._attributes.messageId ??
-                            cot.event._attributes.uid,
-                          chatRoom:
-                            cot.event.detail?.__chat._attributes.chatroom,
-                          id: cot.event.detail?.__chat._attributes.id,
-                          senderCallsign:
-                            cot.event.detail?.__chat._attributes.senderCallsign,
-                          chatGroup: {
-                            uids:
-                              Object.entries(
-                                cot.event.detail?.__chat.chatgrp._attributes,
-                              )
-                                .filter(([key]) => key !== "id")
-                                .map((a) => a[1]) || [],
-                            id: cot.event.detail?.__chat.chatgrp.id ?? "",
-                          },
-                        }
-                      : undefined,
-                    fileshare: cot.event.detail?.fileshare
-                      ? {
-                          uid: cot.event._attributes.uid,
-                          filename:
-                            cot.event.detail?.fileshare?._attributes.filename,
-                          senderUid:
-                            cot.event.detail?.fileshare?._attributes.senderUid,
-                          senderCallsign:
-                            cot.event.detail?.fileshare?._attributes
-                              .senderCallsign,
-                          name: cot.event.detail?.fileshare?._attributes.name,
-                        }
-                      : undefined,
-                    remarks: cot.event.detail?.remarks
-                      ? {
-                          source: cot.event.detail?.remarks._attributes?.source,
-                          to: cot.event.detail?.remarks._attributes?.to,
-                          time: cot.event.detail?.remarks._attributes?.time,
-                          text: cot.event.detail?.remarks._text,
-                        }
-                      : undefined,
-                  },
-                };
-              }) ?? []
-            );
+          cots: async (_: unknown, args?: { forceRefresh?: boolean }) => {
+            return await this.getCachedCots(Boolean(args?.forceRefresh));
           },
           downloadFile: (_, { uid }) => {
             return this.getFileShare(uid);
@@ -616,5 +558,95 @@ export class Producer {
         `http://${server.hostname}:${server.port}`,
       )}`,
     );
+  }
+
+  private mapCotsForGraphql() {
+    return (
+      this.getAllCoT()?.map((cot) => {
+        return {
+          version: cot.event._attributes.version,
+          uid: cot.event._attributes.uid,
+          type: cot.event._attributes.type,
+          how: cot.event._attributes.how ?? "m-g",
+          point: {
+            lat: cot.event.point._attributes.lat,
+            lon: cot.event.point._attributes.lon,
+            hae: cot.event.point._attributes.hae,
+          },
+          detail: {
+            callsign: cot.event.detail?.contact?._attributes.callsign ?? "",
+            chat: cot.event.detail?.__chat
+              ? {
+                  parent: cot.event.detail?.__chat._attributes.parent,
+                  groupOwner: cot.event.detail?.__chat._attributes.groupOwner,
+                  messageId:
+                    cot.event.detail?.__chat._attributes.messageId ??
+                    cot.event._attributes.uid,
+                  chatRoom: cot.event.detail?.__chat._attributes.chatroom,
+                  id: cot.event.detail?.__chat._attributes.id,
+                  senderCallsign:
+                    cot.event.detail?.__chat._attributes.senderCallsign,
+                  chatGroup: {
+                    uids:
+                      Object.entries(
+                        cot.event.detail?.__chat.chatgrp._attributes,
+                      )
+                        .filter(([key]) => key !== "id")
+                        .map((a) => a[1]) || [],
+                    id: cot.event.detail?.__chat.chatgrp.id ?? "",
+                  },
+                }
+              : undefined,
+            fileshare: cot.event.detail?.fileshare
+              ? {
+                  uid: cot.event._attributes.uid,
+                  filename: cot.event.detail?.fileshare?._attributes.filename,
+                  senderUid: cot.event.detail?.fileshare?._attributes.senderUid,
+                  senderCallsign:
+                    cot.event.detail?.fileshare?._attributes.senderCallsign,
+                  name: cot.event.detail?.fileshare?._attributes.name,
+                }
+              : undefined,
+            remarks: cot.event.detail?.remarks
+              ? {
+                  source: cot.event.detail?.remarks._attributes?.source,
+                  to: cot.event.detail?.remarks._attributes?.to,
+                  time: cot.event.detail?.remarks._attributes?.time,
+                  text: cot.event.detail?.remarks._text,
+                }
+              : undefined,
+          },
+        };
+      }) ?? []
+    );
+  }
+
+  private async getCachedCots(forceRefresh = false) {
+    const now = Date.now();
+    if (
+      !forceRefresh &&
+      this.cachedCots &&
+      now - this.cachedCotsAt < this.cotsCacheTtlMs
+    ) {
+      console.log("Producer: Returning cached CoTs");
+      return this.cachedCots;
+    }
+
+    console.log("Producer: Cache expired, fetching new CoTs");
+    if (this.cachedCotsPromise) {
+      return await this.cachedCotsPromise;
+    }
+
+    this.cachedCotsPromise = Promise.resolve(this.mapCotsForGraphql())
+      .then((mapped) => {
+        this.cachedCots = mapped;
+        this.cachedCotsAt = Date.now();
+        return mapped;
+      })
+      .finally(() => {
+        this.cachedCotsPromise = null;
+      });
+
+    return await this.cachedCotsPromise;
   }
 }

@@ -135,6 +135,7 @@ const ConfigSchema = z.object({
         local_download_path: z.string().default(".tak_downloads"),
         graphql_port: z.number(),
         graphql_host: z.string(),
+        cots_cache_ttl_ms: z.number().optional(),
       }),
       z.object({
         enabled: z.literal(false),
