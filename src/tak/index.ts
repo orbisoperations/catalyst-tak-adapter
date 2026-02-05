@@ -3,6 +3,16 @@ import type { Config } from "../config";
 import TAK, { CoT } from "@tak-ps/node-tak";
 import { ExponentialBackoff } from "../utils";
 
+export function buildCotLogRegex(pattern: string | undefined): RegExp | null {
+  if (!pattern) return null;
+  try {
+    return new RegExp(pattern);
+  } catch (e) {
+    console.error(`Invalid cot_log_regex: ${e}`);
+    process.exit(1);
+  }
+}
+
 export function readKeyAndCert(config: Config) {
   // Read key and cert from file system
   return {
@@ -20,11 +30,13 @@ export class TakClient {
   reconnecting: boolean = false;
   private readonly _backoff: ExponentialBackoff = new ExponentialBackoff();
   private connectionIdOverride?: string;
+  private readonly cotLogRegex: RegExp | null;
 
   constructor(config: Config, opts?: { connectionId?: string }) {
     this.config = config;
     this.timers = new Map<string, Timer>();
     this.connectionIdOverride = opts?.connectionId;
+    this.cotLogRegex = buildCotLogRegex(config.cot_log_regex);
   }
 
   async init() {
@@ -89,6 +101,9 @@ export class TakClient {
     }
     this.tak
       .on("cot", async (cot: CoT) => {
+        if (this.cotLogRegex?.test(cot.raw)) {
+          console.log("[cot_log_regex match]", cot.raw);
+        }
         if (hooks.onCoT) {
           const pos = cot.position();
           cot.position([pos[0] ?? 0, pos[1] ?? 0, pos[2] ?? 0]);
