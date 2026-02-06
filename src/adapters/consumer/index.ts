@@ -216,9 +216,6 @@ export class Consumer {
         await this.db.put(key, message);
       }
 
-      chatCotVars.set("recipient_uid", "ANDROID-a0d22135074572b9");
-      chatCotVars.set("message_id", crypto.randomUUID());
-
       const cot = new CoT({
         event: {
           _attributes: {
@@ -249,7 +246,7 @@ export class Consumer {
             __chat: {
               _attributes: {
                 senderCallsign: chatCotVars.get("sender_callsign"),
-                chatroom: "EVA",
+                chatroom: chatCotVars.get("chatroom"),
                 id: chatCotVars.get("recipient_uid"),
                 messageId: chatCotVars.get("message_id"),
                 parent: "RootContactGroup",

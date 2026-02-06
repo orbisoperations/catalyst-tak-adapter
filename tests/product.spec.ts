@@ -18,6 +18,7 @@ mock.module("node:fs", () => {
   return {
     default: {
       readFileSync: () => "Hello world. Mocked file content.",
+      writeFileSync: mock(() => {}),
       createWriteStream: mock(() => mockWriteStream),
       existsSync: mock(() => true),
       mkdirSync: mock(() => {}),

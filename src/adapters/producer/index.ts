@@ -462,7 +462,7 @@ export class Producer {
                   version: cot.event._attributes.version,
                   uid: cot.event._attributes.uid,
                   type: cot.event._attributes.type,
-                  how: cot.event._attributes.how,
+                  how: cot.event._attributes.how ?? "m-g",
                   point: {
                     lat: cot.event.point._attributes.lat,
                     lon: cot.event.point._attributes.lon,
