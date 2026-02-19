@@ -1,8 +1,8 @@
-import fs from "fs";
-import toml from "smol-toml";
-import { merge } from "lodash";
-import z from "zod";
 import { generateMock } from "@anatine/zod-mock";
+import { merge } from "lodash";
+import * as fs from "node:fs";
+import toml from "smol-toml";
+import z from "zod";
 
 // Zod schema for SecretConfig validation
 export const SecretConfigSchema = z

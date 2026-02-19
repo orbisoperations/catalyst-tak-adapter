@@ -1,9 +1,9 @@
 import { Consumer } from "../src/adapters/consumer";
-import { Config, CoTTransform } from "../src/config";
 import { createRTSPConnectionDetailItemPlugin } from "../src/adapters/consumer/consumer-plugins";
+import { Config, CoTTransform } from "../src/config";
 // import TAK, { CoT } from '@tak-ps/node-tak';
 // import * as ld from 'lodash';
-import { expect, describe, beforeEach, it } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
 
 describe("Consumer", () => {
   let consumer: Consumer;
@@ -40,7 +40,7 @@ describe("Consumer", () => {
   };
 
   beforeEach(() => {
-    consumer = new Consumer(mockConfig.consumers![0]!);
+    consumer = new Consumer(mockConfig.consumers![0]!, mockConfig.tak);
   });
 
   it("extracts CoT values correctly", () => {

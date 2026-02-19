@@ -20,7 +20,8 @@
     // Some stricter flags (disabled by default)
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noImplicitAny": true
+    "noImplicitAny": true,
+    "types": ["bun"]
   },
   "include": ["src/**/*.ts", "tests/**/*.ts", "index.ts"],
   "exclude": ["node_modules"]

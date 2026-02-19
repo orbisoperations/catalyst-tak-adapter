@@ -1,10 +1,10 @@
-import tls from "node:tls";
-import { describe, it, mock, expect, afterEach } from "bun:test";
-import { TakClient } from "../src/tak";
-import type { Config } from "../src/config";
 import CoT from "@tak-ps/node-cot";
-import { EventEmitter } from "node:events";
 import { sleep } from "bun";
+import { afterEach, describe, expect, it, mock } from "bun:test";
+import { EventEmitter } from "node:events";
+import tls from "node:tls";
+import type { Config } from "../src/config";
+import { TakClient } from "../src/tak";
 
 const takConfig: Config = {
   dev: true,

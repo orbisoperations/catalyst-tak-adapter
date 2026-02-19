@@ -1,9 +1,9 @@
 import TAK, { CoT } from "@tak-ps/node-tak";
-import { TakClient } from "./src/tak";
-import { getConfig, Config } from "./src/config";
 import { Consumer } from "./src/adapters/consumer";
 import { Producer } from "./src/adapters/producer";
+import { Config, getConfig } from "./src/config";
 import ContactBook from "./src/modules/contact-book";
+import { TakClient } from "./src/tak";
 
 let config: Config | undefined = undefined;
 while (config === undefined) {
@@ -29,7 +29,7 @@ let producer: Producer | undefined = undefined;
 for (const consumer of config.consumers ?? []) {
   if (consumer.enabled) {
     try {
-      consumers.push(new Consumer(consumer));
+      consumers.push(new Consumer(consumer, config.tak));
     } catch (e) {
       console.error("Error instantiating consumer", e);
     }

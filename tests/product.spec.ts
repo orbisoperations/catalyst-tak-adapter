@@ -1,22 +1,62 @@
+import { afterAll, afterEach, describe, expect, it, mock } from "bun:test";
 import * as realFs from "node:fs";
-import { expect, describe, it, afterEach, mock, afterAll } from "bun:test";
 
-// Mock fs module
-mock.module("node:fs", () => {
-  const mockWriteStream = {
-    on: mock((event, callback) => {
-      // Simulate successful events
-      if (event === "finish") {
-        setTimeout(callback, 10);
-      }
-      return mockWriteStream;
-    }),
-    close: mock(() => {}),
-    emit: mock(() => {}),
-  };
+import { CoT } from "@tak-ps/node-tak";
+import { Producer } from "../src/adapters/producer";
+import { Config } from "../src/config";
 
-  return {
-    default: {
+describe("Producer", () => {
+  mock.module("node:https", () => {
+    const mockResponse = {
+      statusCode: 200,
+      statusMessage: "OK",
+      pipe: mock((stream) => {
+        // Simulate successful pipe operation
+        setTimeout(() => {
+          stream.emit("finish");
+        }, 10);
+        return stream;
+      }),
+    };
+
+    const mockRequest = {
+      on: mock(() => {
+        // Don't emit error by default for successful case
+        return mockRequest;
+      }),
+    };
+
+    return {
+      default: {
+        get: mock((url, options, callback) => {
+          // Call the callback with the mock response
+          if (typeof options === "function") {
+            // If options is actually the callback
+            options(mockResponse);
+          } else if (typeof callback === "function") {
+            callback(mockResponse);
+          }
+          return mockRequest;
+        }),
+      },
+    };
+  });
+
+  // Mock fs module
+  mock.module("node:fs", () => {
+    const mockWriteStream = {
+      on: mock((event, callback) => {
+        // Simulate successful events
+        if (event === "finish") {
+          setTimeout(callback, 10);
+        }
+        return mockWriteStream;
+      }),
+      close: mock(() => {}),
+      emit: mock(() => {}),
+    };
+
+    return {
       readFileSync: () => "Hello world. Mocked file content.",
       createWriteStream: mock(() => mockWriteStream),
       existsSync: mock(() => true),
@@ -25,53 +65,12 @@ mock.module("node:fs", () => {
         // Simulate successful unlink
         if (callback) callback();
       }),
-    },
-  };
-});
+    };
+  });
 
-mock.module("node:https", () => {
-  const mockResponse = {
-    statusCode: 200,
-    statusMessage: "OK",
-    pipe: mock((stream) => {
-      // Simulate successful pipe operation
-      setTimeout(() => {
-        stream.emit("finish");
-      }, 10);
-      return stream;
-    }),
-  };
-
-  const mockRequest = {
-    on: mock(() => {
-      // Don't emit error by default for successful case
-      return mockRequest;
-    }),
-  };
-
-  return {
-    default: {
-      get: mock((url, options, callback) => {
-        // Call the callback with the mock response
-        if (typeof options === "function") {
-          // If options is actually the callback
-          options(mockResponse);
-        } else if (typeof callback === "function") {
-          callback(mockResponse);
-        }
-        return mockRequest;
-      }),
-    },
-  };
-});
-
-import { Config } from "../src/config";
-import { Producer } from "../src/adapters/producer";
-import { CoT } from "@tak-ps/node-tak";
-
-describe("Producer", () => {
   afterAll(() => {
     mock.restore();
+    mock.clearAllMocks();
   });
 
   describe("local storage", () => {

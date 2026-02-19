@@ -6,17 +6,16 @@
     [X] we need to send the messages to the TAK server
  */
 
+import type TAK from "@tak-ps/node-tak";
+import { CoT } from "@tak-ps/node-tak";
+import { DatabaseOptions, open, type RootDatabase } from "lmdb";
+import ld from "lodash";
 import {
-  getConfig,
   type ConsumerConfig,
   type CoTOverwrite,
   type CoTTransform,
   type TakConfig,
 } from "../../config";
-import type TAK from "@tak-ps/node-tak";
-import { CoT } from "@tak-ps/node-tak";
-import ld from "lodash";
-import { DatabaseOptions, open, type RootDatabase } from "lmdb";
 import { createRTSPConnectionDetailItemPlugin } from "./consumer-plugins";
 
 interface CoTValues {
@@ -45,9 +44,9 @@ export class Consumer {
   dbPath: string;
   db: RootDatabase<string, Uint8Array>;
 
-  constructor(config: ConsumerConfig) {
+  constructor(config: ConsumerConfig, takConfig: TakConfig) {
     this.config = config;
-    this.takConfig = getConfig().tak;
+    this.takConfig = takConfig;
     this.dbPath = config?.local_db_path || "./db/consumer";
     const missingEnvs = [];
 
