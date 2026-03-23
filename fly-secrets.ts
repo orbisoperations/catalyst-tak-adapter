@@ -1,8 +1,8 @@
-import { parse } from "smol-toml";
-import { readFileSync } from "fs";
-import { join } from "path";
-import z from "zod";
 import { execSync } from "child_process";
+import { readFileSync } from "node:fs";
+import { join } from "path";
+import { parse } from "smol-toml";
+import z from "zod";
 
 const FlySecretsSchema = z.object({
   consumer: z.object({

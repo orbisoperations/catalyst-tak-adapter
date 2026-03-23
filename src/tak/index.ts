@@ -1,6 +1,6 @@
-import fs from "node:fs";
-import type { Config } from "../config";
 import TAK, { CoT } from "@tak-ps/node-tak";
+import * as fs from "node:fs";
+import type { Config } from "../config";
 import { ExponentialBackoff } from "../utils";
 
 export function buildCotLogRegex(pattern: string | undefined): RegExp | null {
