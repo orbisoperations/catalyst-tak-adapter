@@ -146,7 +146,9 @@ const ConfigSchema = z.object({
 
 export type ConsumerConfig = z.infer<typeof ConsumerConfigSchema>;
 export type TakConfig = z.infer<typeof TakConfigSchema>;
-export type Config = z.infer<typeof ConfigSchema>;
+export type Config = z.infer<typeof ConfigSchema> & {
+  cot_log_regex?: string;
+};
 export type CoTTransform = z.infer<typeof CoTTransformSchema>;
 export type CoTOverwrite = z.infer<typeof CoTOverwriteSchema>;
 
@@ -169,6 +171,10 @@ export function getConfig(): Config {
   if (process.env.NODE_ENV !== "development") {
     console.log("[CONFIG] NODE_ENV is not development, setting dev to false");
     validatedConfig.dev = false;
+  }
+
+  if (process.env.COT_LOG_REGEX) {
+    validatedConfig.cot_log_regex = process.env.COT_LOG_REGEX;
   }
 
   console.log("[CONFIG] validatedConfig", validatedConfig);
