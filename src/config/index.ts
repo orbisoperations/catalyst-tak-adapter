@@ -177,18 +177,30 @@ export function getConfig(): Config {
     validatedConfig.cot_log_regex = process.env.COT_LOG_REGEX;
   }
 
+  const mask = (val: string): string => {
+    if (val.length <= 8) return "********";
+    if (val.length < 16) return val.slice(0, 1) + "********" + val.slice(-1);
+    return val.slice(0, 2) + "********" + val.slice(-2);
+  };
+
   const sanitizedConfig = structuredClone(validatedConfig);
-  sanitizedConfig.tak.key_file = "********";
-  sanitizedConfig.tak.cert_file = "********";
+  sanitizedConfig.tak.key_file = mask(sanitizedConfig.tak.key_file);
+  sanitizedConfig.tak.cert_file = mask(sanitizedConfig.tak.cert_file);
   if (sanitizedConfig.consumers) {
     sanitizedConfig.consumers.forEach((consumer) => {
-      consumer.catalyst_token = "********";
+      consumer.catalyst_token = mask(consumer.catalyst_token);
     });
   }
   if (sanitizedConfig.producer?.enabled === true) {
-    sanitizedConfig.producer.catalyst_jwt_issuer = "********";
-    sanitizedConfig.producer.catalyst_jwks_url = "********";
-    sanitizedConfig.producer.catalyst_app_id = "********";
+    sanitizedConfig.producer.catalyst_jwt_issuer = mask(
+      sanitizedConfig.producer.catalyst_jwt_issuer,
+    );
+    sanitizedConfig.producer.catalyst_jwks_url = mask(
+      sanitizedConfig.producer.catalyst_jwks_url,
+    );
+    sanitizedConfig.producer.catalyst_app_id = mask(
+      sanitizedConfig.producer.catalyst_app_id,
+    );
   }
   console.log("[CONFIG] Catalyst TAK Adapter Config", sanitizedConfig);
 
