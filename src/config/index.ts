@@ -177,7 +177,20 @@ export function getConfig(): Config {
     validatedConfig.cot_log_regex = process.env.COT_LOG_REGEX;
   }
 
-  console.log("[CONFIG] validatedConfig", validatedConfig);
+  const sanitizedConfig = structuredClone(validatedConfig);
+  sanitizedConfig.tak.key_file = "********";
+  sanitizedConfig.tak.cert_file = "********";
+  if (sanitizedConfig.consumers) {
+    sanitizedConfig.consumers.forEach((consumer) => {
+      consumer.catalyst_token = "********";
+    });
+  }
+  if (sanitizedConfig.producer?.enabled === true) {
+    sanitizedConfig.producer.catalyst_jwt_issuer = "********";
+    sanitizedConfig.producer.catalyst_jwks_url = "********";
+    sanitizedConfig.producer.catalyst_app_id = "********";
+  }
+  console.log("[CONFIG] Catalyst TAK Adapter Config", sanitizedConfig);
 
   return validatedConfig;
 }

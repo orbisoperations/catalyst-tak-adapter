@@ -485,7 +485,6 @@ export class Consumer {
   }
 
   publishCot(cots: CoT[], tak: TAK) {
-    // console.log("publishing cots", cots, cots[0]?.raw.event.point._attributes);
     tak.write(cots);
   }
 
